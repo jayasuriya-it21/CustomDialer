@@ -62,6 +62,7 @@ class _InCallScreenState extends State<InCallScreen>
 
     _callService.callState.addListener(_onCallStateChanged);
     _checkAutoRecord();
+    _callService.setProximityEnabled(true);
   }
 
   Future<void> _checkAutoRecord() async {
@@ -109,6 +110,7 @@ class _InCallScreenState extends State<InCallScreen>
       if (!_isSpeaker) {
         _isSpeaker = true;
         await _callService.setAudioRoute(1);
+        _callService.setProximityEnabled(false);
       }
       if (mounted) setState(() {});
     }
@@ -122,6 +124,7 @@ class _InCallScreenState extends State<InCallScreen>
 
   @override
   void dispose() {
+    _callService.setProximityEnabled(false);
     _callTimer?.cancel();
     _fadeCtrl.dispose();
     _pulseCtrl.dispose();
@@ -167,9 +170,11 @@ class _InCallScreenState extends State<InCallScreen>
     if (_isSpeaker) {
       setState(() => _isSpeaker = false);
       await _callService.setAudioRoute(0);
+      _callService.setProximityEnabled(true);
     } else {
       setState(() => _isSpeaker = true);
       await _callService.setAudioRoute(1);
+      _callService.setProximityEnabled(false);
     }
   }
 
@@ -202,6 +207,7 @@ class _InCallScreenState extends State<InCallScreen>
         if (path != null && !_isSpeaker) {
           setState(() => _isSpeaker = true);
           await _callService.setAudioRoute(1);
+          _callService.setProximityEnabled(false);
         }
       }
       if (mounted) setState(() {});
@@ -532,33 +538,13 @@ class _InCallScreenState extends State<InCallScreen>
   }
 
   Widget _buildEndCallButton() {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withOpacity(0.35),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Material(
-        color: const Color(0xFFEA4335),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: _disconnect,
-          customBorder: const CircleBorder(),
-          splashColor: Colors.white24,
-          child: const SizedBox(
-            width: 76,
-            height: 76,
-            child: Center(
-                child: Icon(Icons.call_end_rounded,
-                    color: Colors.white, size: 34)),
-          ),
-        ),
-      ),
+    final cs = Theme.of(context).colorScheme;
+    return FloatingActionButton.large(
+      onPressed: _disconnect,
+      elevation: 0,
+      backgroundColor: cs.error,
+      foregroundColor: cs.onError,
+      child: const Icon(Icons.call_end_rounded, size: 36),
     );
   }
 }

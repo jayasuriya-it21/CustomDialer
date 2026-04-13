@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 
 class ThemeProvider extends ChangeNotifier {
   static final ThemeProvider _instance = ThemeProvider._internal();
@@ -61,26 +62,21 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('useDynamicColor', value);
   }
 
-  ThemeData buildLightTheme() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seedColor,
-      brightness: Brightness.light,
-    );
+  ThemeData buildLightTheme({ColorScheme? dynamicScheme}) {
+    ColorScheme scheme;
+    if (_useDynamicColor && dynamicScheme != null) {
+      scheme = dynamicScheme.harmonized();
+    } else {
+      scheme = ColorScheme.fromSeed(
+        seedColor: _seedColor,
+        brightness: Brightness.light,
+      );
+    }
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
-        indicatorColor: scheme.primaryContainer,
-        height: 64,
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: scheme.surfaceContainerLowest,
-      ),
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
@@ -93,26 +89,21 @@ class ThemeProvider extends ChangeNotifier {
     );
   }
 
-  ThemeData buildDarkTheme() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seedColor,
-      brightness: Brightness.dark,
-    );
+  ThemeData buildDarkTheme({ColorScheme? dynamicScheme}) {
+    ColorScheme scheme;
+    if (_useDynamicColor && dynamicScheme != null) {
+      scheme = dynamicScheme.harmonized();
+    } else {
+      scheme = ColorScheme.fromSeed(
+        seedColor: _seedColor,
+        brightness: Brightness.dark,
+      );
+    }
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
-        indicatorColor: scheme.primaryContainer,
-        height: 64,
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: scheme.surfaceContainerHighest,
-      ),
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),

@@ -91,12 +91,12 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _results = matches.take(20).toList());
   }
 
-  void _navigateToDetail(String name, String number) {
+  void _navigateToDetail(String name, String number, String? heroTag) {
     if (name.isNotEmpty) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ContactDetailScreen(name: name, number: number),
+          builder: (_) => ContactDetailScreen(name: name, number: number, heroTag: heroTag),
         ),
       );
     } else {
@@ -115,38 +115,33 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             // Search field
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 16, 0),
-              child: Row(
-                children: [
-                  IconButton(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+              child: Hero(
+                tag: 'search_bar_hero',
+                child: SearchBar(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  hintText: 'Search contacts & places',
+                  leading: IconButton(
                     icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => Navigator.pop(context),
                     tooltip: 'Back',
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      style: const TextStyle(fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'Search contacts & places',
-                        hintStyle: TextStyle(color: cs.onSurfaceVariant),
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                  trailing: [
+                    if (_controller.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          _controller.clear();
+                          setState(() => _results = []);
+                        },
                       ),
-                    ),
-                  ),
-                  if (_controller.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      tooltip: 'Clear',
-                      onPressed: () {
-                        _controller.clear();
-                        setState(() => _results = []);
-                      },
-                    ),
-                ],
+                    const SizedBox(width: 8)
+                  ],
+                  elevation: const WidgetStatePropertyAll(0),
+                  backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -196,13 +191,12 @@ class _SearchScreenState extends State<SearchScreen> {
                             final displayName =
                                 name.isNotEmpty ? name : number;
                             final isContact = r['source'] == 'contact';
+                            final String? heroTag = isContact ? 'search_${displayName}_$number' : null;
 
                             return ListTile(
                               leading: ContactAvatar(
                                 name: displayName,
-                                heroTag: isContact
-                                    ? 'search_avatar_$displayName'
-                                    : null,
+                                heroTag: heroTag,
                               ),
                               title: Text(displayName,
                                   style: const TextStyle(
@@ -234,7 +228,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ],
                               ),
                               onTap: () =>
-                                  _navigateToDetail(name, number),
+                                  _navigateToDetail(name, number, heroTag),
                             );
                           },
                         ),

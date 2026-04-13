@@ -199,9 +199,11 @@ class _DialpadScreenState extends State<DialpadScreen> {
                     final c = _matchingContacts[i];
                     final name = c['name'] as String? ?? '';
                     final num = c['number'] as String? ?? '';
+                    final heroTag = 'dialpad_${name}_$num';
+                    
                     return ListTile(
                       dense: true,
-                      leading: ContactAvatar(name: name, radius: 18),
+                      leading: ContactAvatar(name: name, radius: 18, heroTag: heroTag),
                       title: Text(name,
                           style: const TextStyle(
                               fontSize: 14, fontWeight: FontWeight.w500),
@@ -216,7 +218,7 @@ class _DialpadScreenState extends State<DialpadScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) =>
-                                ContactDetailScreen(name: name, number: num),
+                                ContactDetailScreen(name: name, number: num, heroTag: heroTag),
                           ),
                         );
                       },
@@ -320,21 +322,13 @@ class _DialpadScreenState extends State<DialpadScreen> {
   }
 
   Widget _callButton() {
-    return SizedBox(
-      width: 68,
-      height: 68,
-      child: Material(
-        color: const Color(0xFF34A853),
-        shape: const CircleBorder(),
-        elevation: 3,
-        shadowColor: const Color(0xFF34A853).withOpacity(0.3),
-        child: InkWell(
-          onTap: _makeCall,
-          customBorder: const CircleBorder(),
-          child: const Center(
-              child: Icon(Icons.call_rounded, color: Colors.white, size: 30)),
-        ),
-      ),
+    final cs = Theme.of(context).colorScheme;
+    return FloatingActionButton.large(
+      onPressed: _makeCall,
+      elevation: 0,
+      backgroundColor: cs.tertiaryContainer,
+      foregroundColor: cs.onTertiaryContainer,
+      child: const Icon(Icons.call_rounded, size: 36),
     );
   }
 
@@ -371,15 +365,12 @@ class _DialpadScreenState extends State<DialpadScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(digit,
-                    style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w300,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w400,
                         color: cs.onSurface)),
                 if (letters.isNotEmpty)
                   Text(letters,
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           letterSpacing: 1.5,
                           color: cs.onSurfaceVariant)),
               ],

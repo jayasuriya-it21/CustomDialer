@@ -11,6 +11,7 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
@@ -23,6 +24,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.google_dialer/incall"
     private val REQUEST_ID = 1
+    private var proximityWakeLock: PowerManager.WakeLock? = null
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -236,6 +238,30 @@ class MainActivity : FlutterActivity() {
                             val sims = getSimCards()
                             runOnUiThread { result.success(sims) }
                         }.start()
+                    }
+                    "acquireProximityLock" -> {
+                        try {
+                            if (proximityWakeLock == null) {
+                                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                                proximityWakeLock = powerManager.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "GoogleDialer:Proximity")
+                            }
+                            if (proximityWakeLock?.isHeld == false) {
+                                proximityWakeLock?.acquire()
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "releaseProximityLock" -> {
+                        try {
+                            if (proximityWakeLock?.isHeld == true) {
+                                proximityWakeLock?.release()
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
                     }
 
                     else -> result.notImplemented()

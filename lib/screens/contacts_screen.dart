@@ -115,11 +115,12 @@ class _ContactsScreenState extends State<ContactsScreen>
           final c = item.contact!;
           final name = (c['name'] as String?) ?? '';
           final number = (c['number'] as String?) ?? '';
+          final String heroTag = 'contacts_${name}_$number';
 
           return ListTile(
             leading: ContactAvatar(
               name: name,
-              heroTag: 'contact_avatar_$name',
+              heroTag: heroTag,
             ),
             title: Text(name,
                 style: const TextStyle(
@@ -134,7 +135,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                   context,
                   MaterialPageRoute(
                       builder: (_) =>
-                          ContactDetailScreen(name: name, number: number)));
+                          ContactDetailScreen(name: name, number: number, heroTag: heroTag)));
             },
             trailing: IconButton(
               icon: Icon(Icons.call_rounded, size: 20, color: cs.primary),

@@ -135,6 +135,16 @@ class CallService {
     return [];
   }
 
+  Future<void> setProximityEnabled(bool enabled) async {
+    try {
+      if (enabled) {
+        await _channel.invokeMethod('acquireProximityLock');
+      } else {
+        await _channel.invokeMethod('releaseProximityLock');
+      }
+    } catch (_) {}
+  }
+
   // ---- Event Listener ----
 
   bool _callScreenShowing = false;

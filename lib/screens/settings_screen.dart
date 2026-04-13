@@ -102,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // ---- Recording ----
           _sectionHeader('Call recording'),
 
-          SwitchListTile(
+          SwitchListTile.adaptive(
             secondary: Icon(Icons.fiber_manual_record_rounded, color: cs.primary),
             title: const Text('Auto-record calls'),
             subtitle: const Text('Automatically start recording when call connects'),
@@ -142,17 +142,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => _showThemePicker(),
           ),
 
-          ListTile(
-            leading: Icon(Icons.palette_rounded, color: cs.primary),
-            title: const Text('Accent colour'),
-            subtitle: const Text('Choose your theme colour'),
-            trailing: Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: _theme.seedColor),
-            ),
-            onTap: () => _showColorPicker(),
+          SwitchListTile.adaptive(
+            secondary: Icon(Icons.color_lens_rounded, color: cs.primary),
+            title: const Text('Dynamic color'),
+            subtitle: const Text('Match theme with your wallpaper (Android 12+)'),
+            value: _theme.useDynamicColor,
+            onChanged: (v) {
+              _theme.setUseDynamicColor(v);
+              setState(() {});
+            },
           ),
+
+          if (!_theme.useDynamicColor)
+            ListTile(
+              leading: Icon(Icons.palette_rounded, color: cs.primary),
+              title: const Text('Accent colour'),
+              subtitle: const Text('Choose your theme colour'),
+              trailing: Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle, color: _theme.seedColor),
+              ),
+              onTap: () => _showColorPicker(),
+            ),
 
           const Divider(indent: 16, endIndent: 16),
 

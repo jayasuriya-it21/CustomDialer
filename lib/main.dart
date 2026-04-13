@@ -8,6 +8,7 @@ import 'screens/contacts_screen.dart';
 import 'screens/dialpad_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'services/call_service.dart';
 import 'services/contact_service.dart';
 import 'services/favorites_service.dart';
@@ -51,26 +52,30 @@ class _DialerAppState extends State<DialerApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Phone',
-      debugShowCheckedModeBanner: false,
-      theme: _theme.buildLightTheme().copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      darkTheme: _theme.buildDarkTheme().copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      themeMode: _theme.themeMode,
-      home: const HomeScreen(),
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          title: 'Phone',
+          debugShowCheckedModeBanner: false,
+          theme: _theme.buildLightTheme(dynamicScheme: lightDynamic).copyWith(
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+              },
+            ),
+          ),
+          darkTheme: _theme.buildDarkTheme(dynamicScheme: darkDynamic).copyWith(
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+              },
+            ),
+          ),
+          themeMode: _theme.themeMode,
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }
@@ -171,42 +176,25 @@ class _HomeScreenState extends State<HomeScreen> {
               // Search Bar
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                child: Material(
-                  color: cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(28),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: _openSearch,
-                    borderRadius: BorderRadius.circular(28),
-                    child: SizedBox(
-                      height: 48,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.search_rounded,
-                                color: cs.onSurfaceVariant, size: 22),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                'Search contacts & places',
-                                style: TextStyle(
-                                    color: cs.onSurfaceVariant, fontSize: 16),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: _openSettings,
-                              child: CircleAvatar(
-                                radius: 16,
-                                backgroundColor: cs.primary,
-                                child: Icon(Icons.person_rounded,
-                                    size: 18, color: cs.onPrimary),
-                              ),
-                            ),
-                          ],
+                child: Hero(
+                  tag: 'search_bar_hero',
+                  child: SearchBar(
+                    hintText: 'Search contacts & places',
+                    leading: const Icon(Icons.search_rounded),
+                    trailing: [
+                      GestureDetector(
+                        onTap: _openSettings,
+                        child: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: cs.primary,
+                          child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8)
+                    ],
+                    elevation: const WidgetStatePropertyAll(0),
+                    backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+                    onTap: _openSearch,
                   ),
                 ),
               ),
@@ -248,9 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _openDialpad,
-          elevation: 2,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: const Icon(Icons.dialpad_rounded, size: 26),
         ),
       ),

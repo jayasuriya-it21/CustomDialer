@@ -91,6 +91,7 @@ class _FavouritesScreenState extends State<FavouritesScreen>
           final c = _favorites[i];
           final name = (c['name'] as String?) ?? '';
           final number = (c['number'] as String?) ?? '';
+          final heroTag = 'fav_${name}_$number';
 
           return GestureDetector(
             onTap: () {
@@ -98,13 +99,13 @@ class _FavouritesScreenState extends State<FavouritesScreen>
                   context,
                   MaterialPageRoute(
                       builder: (_) =>
-                          ContactDetailScreen(name: name, number: number)));
+                          ContactDetailScreen(name: name, number: number, heroTag: heroTag)));
             },
             child: Column(
               children: [
                 Stack(
                   children: [
-                    ContactAvatar(name: name, radius: 32),
+                    ContactAvatar(name: name, radius: 32, heroTag: heroTag),
                     Positioned(
                       right: 0,
                       bottom: 0,

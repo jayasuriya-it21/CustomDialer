@@ -7,8 +7,14 @@ import '../widgets/contact_avatar.dart';
 class ContactDetailScreen extends StatefulWidget {
   final String name;
   final String number;
+  final String? heroTag;
 
-  const ContactDetailScreen({super.key, required this.name, required this.number});
+  const ContactDetailScreen({
+    super.key,
+    required this.name,
+    required this.number,
+    this.heroTag,
+  });
 
   @override
   State<ContactDetailScreen> createState() => _ContactDetailScreenState();
@@ -95,7 +101,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                 ContactAvatar(
                   name: widget.name,
                   radius: 48,
-                  heroTag: 'contact_avatar_${widget.name}',
+                  heroTag: widget.heroTag,
                 ),
                 const SizedBox(height: 16),
 
