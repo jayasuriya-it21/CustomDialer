@@ -91,10 +91,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initApp();
+    // Defer heavy init to after first frame to reduce jank
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initApp());
   }
 
   Future<void> _initApp() async {
+    // Request permissions
     await [
       Permission.phone,
       Permission.contacts,
@@ -102,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Permission.storage,
     ].request();
 
-    // Pre-cache contacts and favorites in parallel
+    // Pre-cache contacts and favorites in parallel (non-blocking)
     _contactService.preload();
     _favoritesService.load();
 

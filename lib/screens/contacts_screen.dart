@@ -117,7 +117,10 @@ class _ContactsScreenState extends State<ContactsScreen>
           final number = (c['number'] as String?) ?? '';
 
           return ListTile(
-            leading: ContactAvatar(name: name),
+            leading: ContactAvatar(
+              name: name,
+              heroTag: 'contact_avatar_$name',
+            ),
             title: Text(name,
                 style: const TextStyle(
                     fontWeight: FontWeight.w500, fontSize: 15),

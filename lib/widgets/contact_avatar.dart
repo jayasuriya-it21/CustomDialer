@@ -4,12 +4,14 @@ class ContactAvatar extends StatelessWidget {
   final String name;
   final double radius;
   final String? photoUri;
+  final String? heroTag;
 
   const ContactAvatar({
     super.key,
     required this.name,
     this.radius = 22,
     this.photoUri,
+    this.heroTag,
   });
 
   static const List<Color> _palette = [
@@ -36,25 +38,36 @@ class ContactAvatar extends StatelessWidget {
     }
     if (initials.isEmpty) initials = '#';
 
+    Widget avatar;
+
     if (photoUri != null && photoUri!.isNotEmpty) {
-      return CircleAvatar(
+      avatar = CircleAvatar(
         radius: radius,
         backgroundImage: NetworkImage(photoUri!),
         backgroundColor: color.withOpacity(isDark ? 0.3 : 0.15),
       );
+    } else {
+      avatar = CircleAvatar(
+        radius: radius,
+        backgroundColor: color.withOpacity(isDark ? 0.25 : 0.12),
+        child: Text(
+          initials,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: radius * 0.7,
+          ),
+        ),
+      );
     }
 
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: color.withOpacity(isDark ? 0.25 : 0.12),
-      child: Text(
-        initials,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: radius * 0.7,
-        ),
-      ),
-    );
+    if (heroTag != null) {
+      return Hero(
+        tag: heroTag!,
+        child: avatar,
+      );
+    }
+
+    return avatar;
   }
 }

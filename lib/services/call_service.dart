@@ -137,6 +137,8 @@ class CallService {
 
   // ---- Event Listener ----
 
+  bool _callScreenShowing = false;
+
   void listenToCallEvents() {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
@@ -145,6 +147,8 @@ class CallService {
           final number = args['number'] as String? ?? 'Unknown';
           final stateStr = args['stateStr'] as String? ?? 'unknown';
           callState.value = stateStr;
+
+          if (_callScreenShowing) break; // Prevent double-push
 
           // Lookup contact name asynchronously
           final callerName = await _contactService.lookupName(number);
@@ -166,6 +170,7 @@ class CallService {
           break;
         case 'onCallRemoved':
           callState.value = 'idle';
+          _callScreenShowing = false;
           final nav = navigatorKey.currentState;
           if (nav != null && nav.canPop()) {
             nav.pop();
@@ -176,6 +181,7 @@ class CallService {
   }
 
   void _navigateToIncomingScreen(String callerName, String callerNumber) {
+    _callScreenShowing = true;
     final nav = navigatorKey.currentState;
     if (nav != null) {
       nav.push(
@@ -195,6 +201,7 @@ class CallService {
   }
 
   void _navigateToInCallScreen(String callerName, {bool isIncoming = false}) {
+    _callScreenShowing = true;
     final nav = navigatorKey.currentState;
     if (nav != null) {
       nav.push(

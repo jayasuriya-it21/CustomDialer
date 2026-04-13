@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/call_service.dart';
 import '../services/contact_service.dart';
 import '../widgets/contact_avatar.dart';
+import 'contact_detail_screen.dart';
 
 class DialpadScreen extends StatefulWidget {
   const DialpadScreen({super.key});
@@ -18,11 +19,13 @@ class _DialpadScreenState extends State<DialpadScreen> {
   List<Map<String, dynamic>> _allContacts = [];
   List<Map<String, dynamic>> _matchingContacts = [];
   bool _contactsLoaded = false;
+  List<Map<String, dynamic>> _sims = [];
 
   @override
   void initState() {
     super.initState();
     _loadContacts();
+    _loadSimInfo();
   }
 
   Future<void> _loadContacts() async {
@@ -32,6 +35,11 @@ class _DialpadScreenState extends State<DialpadScreen> {
       _allContacts = await _contactService.getContacts();
     }
     _contactsLoaded = true;
+  }
+
+  Future<void> _loadSimInfo() async {
+    final sims = await _callService.getSimInfo();
+    if (mounted) setState(() => _sims = sims);
   }
 
   // T9 matching
@@ -90,7 +98,10 @@ class _DialpadScreenState extends State<DialpadScreen> {
 
   void _onClear() {
     HapticFeedback.mediumImpact();
-    setState(() { _number = ''; _matchingContacts = []; });
+    setState(() {
+      _number = '';
+      _matchingContacts = [];
+    });
   }
 
   Future<void> _makeCall() async {
@@ -104,6 +115,11 @@ class _DialpadScreenState extends State<DialpadScreen> {
     _contactService.addContact(_number);
   }
 
+  void _openVideoCall() {
+    if (_number.isEmpty) return;
+    _contactService.openVideoCall(_number);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -113,29 +129,63 @@ class _DialpadScreenState extends State<DialpadScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Back button
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => Navigator.pop(context),
+            // Top row: back + SIM indicator
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Back',
+                  ),
+                  const Spacer(),
+                  if (_sims.length > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: cs.primaryContainer.withOpacity(0.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sim_card_rounded,
+                              size: 14, color: cs.onPrimaryContainer),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_sims.length} SIMs',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                ],
               ),
             ),
 
             // Number display
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-              child: Text(
-                _number.isEmpty ? '\u200B' : _formatNum(_number),
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 150),
                 style: TextStyle(
                   fontSize: _number.length > 14 ? 26 : 34,
                   fontWeight: FontWeight.w300,
                   letterSpacing: 1.5,
                   color: cs.onSurface,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                child: Text(
+                  _number.isEmpty ? '\u200B' : _formatNum(_number),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
 
@@ -143,6 +193,7 @@ class _DialpadScreenState extends State<DialpadScreen> {
             if (_matchingContacts.isNotEmpty)
               Expanded(
                 child: ListView.builder(
+                  physics: const BouncingScrollPhysics(),
                   itemCount: _matchingContacts.length,
                   itemBuilder: (_, i) {
                     final c = _matchingContacts[i];
@@ -152,16 +203,28 @@ class _DialpadScreenState extends State<DialpadScreen> {
                       dense: true,
                       leading: ContactAvatar(name: name, radius: 18),
                       title: Text(name,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                       subtitle: Text(num,
-                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant)),
                       onTap: () {
-                        setState(() => _number = num.replaceAll(RegExp(r'[\s\-\(\)]'), ''));
+                        // Navigate to contact detail
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ContactDetailScreen(name: name, number: num),
+                          ),
+                        );
                       },
                       trailing: IconButton(
-                        icon: Icon(Icons.call_rounded, size: 18, color: cs.primary),
+                        icon: Icon(Icons.call_rounded,
+                            size: 18, color: cs.primary),
                         visualDensity: VisualDensity.compact,
+                        tooltip: 'Call',
                         onPressed: () => _callService.makeCall(num),
                       ),
                     );
@@ -176,7 +239,8 @@ class _DialpadScreenState extends State<DialpadScreen> {
                     padding: const EdgeInsets.only(top: 4, bottom: 8),
                     child: TextButton.icon(
                       onPressed: _addToContacts,
-                      icon: Icon(Icons.person_add_rounded, size: 16, color: cs.primary),
+                      icon: Icon(Icons.person_add_rounded,
+                          size: 16, color: cs.primary),
                       label: Text('Add to contacts',
                           style: TextStyle(color: cs.primary, fontSize: 14)),
                     ),
@@ -199,30 +263,42 @@ class _DialpadScreenState extends State<DialpadScreen> {
               ),
             ),
 
-            // Bottom row
+            // Bottom row: video | call | backspace
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 16, 32, 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Video call button (shown when number entered)
                   SizedBox(
                     width: 56,
-                    child: _number.isEmpty
+                    child: _number.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.voicemail_rounded, color: cs.onSurfaceVariant),
-                            onPressed: () {},
+                            icon: Icon(Icons.videocam_rounded,
+                                color: cs.primary),
+                            tooltip: 'Video call',
+                            onPressed: _openVideoCall,
                           )
-                        : null,
+                        : IconButton(
+                            icon: Icon(Icons.voicemail_rounded,
+                                color: cs.onSurfaceVariant),
+                            tooltip: 'Voicemail',
+                            onPressed: () {},
+                          ),
                   ),
+                  // Call button
                   _callButton(),
+                  // Backspace
                   SizedBox(
                     width: 56,
                     child: _number.isNotEmpty
                         ? GestureDetector(
                             onLongPress: _onClear,
                             child: IconButton(
-                              icon: Icon(Icons.backspace_outlined, color: cs.onSurfaceVariant),
+                              icon: Icon(Icons.backspace_outlined,
+                                  color: cs.onSurfaceVariant),
                               iconSize: 24,
+                              tooltip: 'Delete',
                               onPressed: _onBackspace,
                             ),
                           )
@@ -274,32 +350,40 @@ class _DialpadScreenState extends State<DialpadScreen> {
 
   Widget _key(String digit, String letters) {
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _onKey(digit),
-        onLongPress: digit == '0' ? () => _onKey('+') : null,
-        borderRadius: BorderRadius.circular(40),
-        splashColor: cs.primary.withOpacity(0.08),
-        child: SizedBox(
-          width: 80,
-          height: 64,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(digit,
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w300,
-                      color: cs.onSurface)),
-              if (letters.isNotEmpty)
-                Text(letters,
+    return Semantics(
+      label: digit == '*'
+          ? 'Star'
+          : digit == '#'
+              ? 'Hash'
+              : 'Digit $digit${letters.isNotEmpty ? ', $letters' : ''}',
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onKey(digit),
+          onLongPress: digit == '0' ? () => _onKey('+') : null,
+          borderRadius: BorderRadius.circular(40),
+          splashColor: cs.primary.withOpacity(0.08),
+          child: SizedBox(
+            width: 80,
+            height: 64,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(digit,
                     style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1.5,
-                        color: cs.onSurfaceVariant)),
-            ],
+                        fontSize: 28,
+                        fontWeight: FontWeight.w300,
+                        color: cs.onSurface)),
+                if (letters.isNotEmpty)
+                  Text(letters,
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.5,
+                          color: cs.onSurfaceVariant)),
+              ],
+            ),
           ),
         ),
       ),

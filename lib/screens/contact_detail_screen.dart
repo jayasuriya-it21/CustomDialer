@@ -92,9 +92,10 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 16),
-                Hero(
-                  tag: 'avatar_${widget.name}',
-                  child: ContactAvatar(name: widget.name, radius: 48),
+                ContactAvatar(
+                  name: widget.name,
+                  radius: 48,
+                  heroTag: 'contact_avatar_${widget.name}',
                 ),
                 const SizedBox(height: 16),
 

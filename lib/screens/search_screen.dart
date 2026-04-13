@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/call_service.dart';
 import '../services/contact_service.dart';
 import '../widgets/contact_avatar.dart';
+import 'contact_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -43,10 +44,12 @@ class _SearchScreenState extends State<SearchScreen> {
       _allContacts = await _contactService.getContacts();
     }
     final logs = await _callService.getCallLog();
-    if (mounted) setState(() {
-      _allLogs = logs;
-      _loaded = true;
-    });
+    if (mounted) {
+      setState(() {
+        _allLogs = logs;
+        _loaded = true;
+      });
+    }
   }
 
   void _search() {
@@ -59,7 +62,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final Set<String> seen = {};
     final matches = <Map<String, dynamic>>[];
 
-    // Search contacts
+    // Search contacts first
     for (final c in _allContacts) {
       final name = (c['name'] as String? ?? '').toLowerCase();
       final number = (c['number'] as String? ?? '');
@@ -88,6 +91,20 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _results = matches.take(20).toList());
   }
 
+  void _navigateToDetail(String name, String number) {
+    if (name.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ContactDetailScreen(name: name, number: number),
+        ),
+      );
+    } else {
+      // Unknown contact — just call
+      _callService.makeCall(number);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -104,6 +121,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   IconButton(
                     icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => Navigator.pop(context),
+                    tooltip: 'Back',
                   ),
                   Expanded(
                     child: TextField(
@@ -114,13 +132,15 @@ class _SearchScreenState extends State<SearchScreen> {
                         hintText: 'Search contacts & places',
                         hintStyle: TextStyle(color: cs.onSurfaceVariant),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
                   if (_controller.text.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.close_rounded),
+                      tooltip: 'Clear',
                       onPressed: () {
                         _controller.clear();
                         setState(() => _results = []);
@@ -135,34 +155,86 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: _controller.text.isEmpty
                   ? Center(
-                      child: Text(
-                        'Search by name or number',
-                        style: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.5)),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.search_rounded,
+                              size: 48,
+                              color: cs.onSurfaceVariant.withOpacity(0.2)),
+                          const SizedBox(height: 12),
+                          Text('Search by name or number',
+                              style: TextStyle(
+                                  color: cs.onSurfaceVariant.withOpacity(0.5))),
+                        ],
                       ),
                     )
                   : _results.isEmpty
                       ? Center(
-                          child: Text('No results', style: TextStyle(color: cs.onSurfaceVariant)),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search_off_rounded,
+                                  size: 48,
+                                  color:
+                                      cs.onSurfaceVariant.withOpacity(0.2)),
+                              const SizedBox(height: 12),
+                              Text('No results',
+                                  style: TextStyle(
+                                      color: cs.onSurfaceVariant)),
+                            ],
+                          ),
                         )
-                      : ListView.builder(
+                      : ListView.separated(
+                          padding: const EdgeInsets.only(top: 4),
                           itemCount: _results.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, indent: 72),
                           itemBuilder: (_, i) {
                             final r = _results[i];
                             final name = (r['name'] as String?) ?? '';
                             final number = (r['number'] as String?) ?? '';
-                            final displayName = name.isNotEmpty ? name : number;
+                            final displayName =
+                                name.isNotEmpty ? name : number;
+                            final isContact = r['source'] == 'contact';
 
                             return ListTile(
-                              leading: ContactAvatar(name: displayName),
-                              title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                              subtitle: name.isNotEmpty ? Text(number, style: TextStyle(
-                                fontSize: 13, color: cs.onSurfaceVariant,
-                              )) : null,
-                              trailing: IconButton(
-                                icon: Icon(Icons.call_rounded, color: cs.primary, size: 20),
-                                onPressed: () => _callService.makeCall(number),
+                              leading: ContactAvatar(
+                                name: displayName,
+                                heroTag: isContact
+                                    ? 'search_avatar_$displayName'
+                                    : null,
                               ),
-                              onTap: () => _callService.makeCall(number),
+                              title: Text(displayName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w500)),
+                              subtitle: name.isNotEmpty
+                                  ? Text(number,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: cs.onSurfaceVariant))
+                                  : null,
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.call_rounded,
+                                        color: cs.primary, size: 20),
+                                    tooltip: 'Call',
+                                    onPressed: () =>
+                                        _callService.makeCall(number),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.message_rounded,
+                                        color: cs.onSurfaceVariant,
+                                        size: 20),
+                                    tooltip: 'Message',
+                                    onPressed: () =>
+                                        _contactService.openSms(number),
+                                  ),
+                                ],
+                              ),
+                              onTap: () =>
+                                  _navigateToDetail(name, number),
                             );
                           },
                         ),
