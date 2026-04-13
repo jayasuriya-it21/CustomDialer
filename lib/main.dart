@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'theme/theme_provider.dart';
+import 'screens/favourites_screen.dart';
 import 'screens/recents_screen.dart';
 import 'screens/contacts_screen.dart';
 import 'screens/dialpad_screen.dart';
@@ -54,8 +55,20 @@ class _DialerAppState extends State<DialerApp> {
       navigatorKey: navigatorKey,
       title: 'Phone',
       debugShowCheckedModeBanner: false,
-      theme: _theme.buildLightTheme(),
-      darkTheme: _theme.buildDarkTheme(),
+      theme: _theme.buildLightTheme().copyWith(
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          },
+        ),
+      ),
+      darkTheme: _theme.buildDarkTheme().copyWith(
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          },
+        ),
+      ),
       themeMode: _theme.themeMode,
       home: const HomeScreen(),
     );
@@ -89,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Permission.storage,
     ].request();
 
-    // Pre-cache contacts and favorites in parallel (non-blocking)
+    // Pre-cache contacts and favorites in parallel
     _contactService.preload();
     _favoritesService.load();
 
@@ -169,12 +182,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           children: [
-                            Icon(Icons.search_rounded, color: cs.onSurfaceVariant, size: 22),
+                            Icon(Icons.search_rounded,
+                                color: cs.onSurfaceVariant, size: 22),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Text(
                                 'Search contacts & places',
-                                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 16),
+                                style: TextStyle(
+                                    color: cs.onSurfaceVariant, fontSize: 16),
                               ),
                             ),
                             GestureDetector(
@@ -182,7 +197,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: CircleAvatar(
                                 radius: 16,
                                 backgroundColor: cs.primary,
-                                child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
+                                child: Icon(Icons.person_rounded,
+                                    size: 18, color: cs.onPrimary),
                               ),
                             ),
                           ],
@@ -195,15 +211,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Body
               Expanded(
-                child: RepaintBoundary(
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: const [
-                      RecentsScreen(),
-                      RecentsScreen(),
-                      ContactsScreen(),
-                    ],
-                  ),
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: const [
+                    RepaintBoundary(child: FavouritesScreen()),
+                    RepaintBoundary(child: RecentsScreen()),
+                    RepaintBoundary(child: ContactsScreen()),
+                  ],
                 ),
               ),
             ],
@@ -233,7 +247,8 @@ class _HomeScreenState extends State<HomeScreen> {
         floatingActionButton: FloatingActionButton(
           onPressed: _openDialpad,
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: const Icon(Icons.dialpad_rounded, size: 26),
         ),
       ),
