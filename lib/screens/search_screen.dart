@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/call_service.dart';
+import '../services/contact_service.dart';
 import '../widgets/contact_avatar.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final CallService _callService = CallService();
+  final ContactService _contactService = ContactService();
 
   List<Map<String, dynamic>> _allContacts = [];
   List<Map<String, dynamic>> _allLogs = [];
@@ -35,10 +37,13 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _loadData() async {
-    final contacts = await _callService.getContacts();
+    if (_contactService.isLoaded) {
+      _allContacts = _contactService.cachedContacts;
+    } else {
+      _allContacts = await _contactService.getContacts();
+    }
     final logs = await _callService.getCallLog();
     if (mounted) setState(() {
-      _allContacts = contacts;
       _allLogs = logs;
       _loaded = true;
     });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/contact_service.dart';
 import '../services/call_service.dart';
 import '../widgets/contact_avatar.dart';
 import 'contact_detail_screen.dart';
@@ -10,12 +11,16 @@ class ContactsScreen extends StatefulWidget {
   State<ContactsScreen> createState() => _ContactsScreenState();
 }
 
-class _ContactsScreenState extends State<ContactsScreen> {
+class _ContactsScreenState extends State<ContactsScreen>
+    with AutomaticKeepAliveClientMixin {
+  final ContactService _contactService = ContactService();
   final CallService _callService = CallService();
   List<Map<String, dynamic>> _contacts = [];
+  List<_ListItem> _items = [];
   bool _isLoading = true;
 
-  List<_ListItem> _items = [];
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -25,9 +30,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   Future<void> _loadContacts() async {
     setState(() => _isLoading = true);
-    final contacts = await _callService.getContacts();
 
-    // Group by first letter
+    // Use cached contacts if available
+    List<Map<String, dynamic>> contacts;
+    if (_contactService.isLoaded) {
+      contacts = _contactService.cachedContacts;
+    } else {
+      contacts = await _contactService.getContacts();
+    }
+
+    // Pre-compute grouped flat list
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (final c in contacts) {
       final name = (c['name'] as String?) ?? '';
@@ -36,7 +48,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }
     final keys = grouped.keys.toList()..sort();
 
-    // Build flat list with headers for better scroll performance
     final items = <_ListItem>[];
     for (final key in keys) {
       items.add(_ListItem(isHeader: true, letter: key));
@@ -45,15 +56,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }
     }
 
-    if (mounted) setState(() { 
-      _contacts = contacts; 
-      _items = items;
-      _isLoading = false; 
-    });
+    if (mounted) {
+      setState(() {
+        _contacts = contacts;
+        _items = items;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final cs = Theme.of(context).colorScheme;
 
     if (_isLoading) {
@@ -65,28 +79,37 @@ class _ContactsScreenState extends State<ContactsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.people_outline_rounded, size: 64, color: cs.onSurfaceVariant.withOpacity(0.25)),
+            Icon(Icons.people_outline_rounded, size: 64,
+                color: cs.onSurfaceVariant.withOpacity(0.25)),
             const SizedBox(height: 16),
-            Text('No contacts', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
+            Text('No contacts',
+                style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
           ],
         ),
       );
     }
 
     return RefreshIndicator(
-      onRefresh: _loadContacts,
+      onRefresh: () async {
+        await _contactService.refresh();
+        await _loadContacts();
+      },
       child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.only(top: 4),
         itemCount: _items.length,
+        itemExtent: null,
         itemBuilder: (_, i) {
           final item = _items[i];
           if (item.isHeader) {
             return Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(item.letter!, style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary,
-              )),
+              child: Text(item.letter!,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: cs.primary)),
             );
           }
           final c = item.contact!;
@@ -95,13 +118,20 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
           return ListTile(
             leading: ContactAvatar(name: name),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(number, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+            title: Text(name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w500, fontSize: 15),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            subtitle: Text(number,
+                style:
+                    TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => ContactDetailScreen(name: name, number: number),
-              ));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          ContactDetailScreen(name: name, number: number)));
             },
             trailing: IconButton(
               icon: Icon(Icons.call_rounded, size: 20, color: cs.primary),

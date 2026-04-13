@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/call_service.dart';
+import '../services/contact_service.dart';
 import '../widgets/contact_avatar.dart';
 
 class DialpadScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class DialpadScreen extends StatefulWidget {
 class _DialpadScreenState extends State<DialpadScreen> {
   String _number = '';
   final CallService _callService = CallService();
+  final ContactService _contactService = ContactService();
   List<Map<String, dynamic>> _allContacts = [];
   List<Map<String, dynamic>> _matchingContacts = [];
   bool _contactsLoaded = false;
@@ -24,11 +26,15 @@ class _DialpadScreenState extends State<DialpadScreen> {
   }
 
   Future<void> _loadContacts() async {
-    _allContacts = await _callService.getContacts();
+    if (_contactService.isLoaded) {
+      _allContacts = _contactService.cachedContacts;
+    } else {
+      _allContacts = await _contactService.getContacts();
+    }
     _contactsLoaded = true;
   }
 
-  // T9 matching: maps each digit to possible letters
+  // T9 matching
   static const Map<String, String> _t9Map = {
     '2': 'abcABC', '3': 'defDEF', '4': 'ghiGHI',
     '5': 'jklJKL', '6': 'mnoMNO', '7': 'pqrsPQRS',
@@ -40,16 +46,13 @@ class _DialpadScreenState extends State<DialpadScreen> {
       _matchingContacts = [];
       return;
     }
-    // Match by number substring OR T9 name match
     _matchingContacts = _allContacts.where((c) {
       final name = (c['name'] as String?) ?? '';
       final num = (c['number'] as String?) ?? '';
-      // Direct number match
       if (num.replaceAll(RegExp(r'[\s\-\(\)\+]'), '').contains(_number)) return true;
-      // T9 name match
       if (_matchesT9(name, _number)) return true;
       return false;
-    }).take(5).toList();
+    }).take(10).toList();
   }
 
   bool _matchesT9(String name, String digits) {
@@ -57,7 +60,6 @@ class _DialpadScreenState extends State<DialpadScreen> {
     final cleanName = name.replaceAll(RegExp(r'[^a-zA-Z]'), '').toLowerCase();
     if (cleanName.length < digits.length) return false;
 
-    // Check if digits match the beginning of the name
     for (int i = 0; i < digits.length; i++) {
       final d = digits[i];
       final letters = _t9Map[d];
@@ -95,6 +97,11 @@ class _DialpadScreenState extends State<DialpadScreen> {
     if (_number.isEmpty) return;
     HapticFeedback.mediumImpact();
     await _callService.makeCall(_number);
+  }
+
+  void _addToContacts() {
+    if (_number.isEmpty) return;
+    _contactService.addContact(_number);
   }
 
   @override
@@ -144,10 +151,14 @@ class _DialpadScreenState extends State<DialpadScreen> {
                     return ListTile(
                       dense: true,
                       leading: ContactAvatar(name: name, radius: 18),
-                      title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(num, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-                      onTap: () { setState(() => _number = num.replaceAll(RegExp(r'[\s\-\(\)]'), '')); },
+                      title: Text(name,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(num,
+                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                      onTap: () {
+                        setState(() => _number = num.replaceAll(RegExp(r'[\s\-\(\)]'), ''));
+                      },
                       trailing: IconButton(
                         icon: Icon(Icons.call_rounded, size: 18, color: cs.primary),
                         visualDensity: VisualDensity.compact,
@@ -163,9 +174,11 @@ class _DialpadScreenState extends State<DialpadScreen> {
                   alignment: Alignment.topCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 8),
-                    child: TextButton(
-                      onPressed: () {},
-                      child: Text('Add to contacts', style: TextStyle(color: cs.primary, fontSize: 14)),
+                    child: TextButton.icon(
+                      onPressed: _addToContacts,
+                      icon: Icon(Icons.person_add_rounded, size: 16, color: cs.primary),
+                      label: Text('Add to contacts',
+                          style: TextStyle(color: cs.primary, fontSize: 14)),
                     ),
                   ),
                 ),
@@ -192,9 +205,15 @@ class _DialpadScreenState extends State<DialpadScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  SizedBox(width: 56, child: _number.isEmpty ? IconButton(
-                    icon: Icon(Icons.voicemail_rounded, color: cs.onSurfaceVariant), onPressed: () {},
-                  ) : null),
+                  SizedBox(
+                    width: 56,
+                    child: _number.isEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.voicemail_rounded, color: cs.onSurfaceVariant),
+                            onPressed: () {},
+                          )
+                        : null,
+                  ),
                   _callButton(),
                   SizedBox(
                     width: 56,
@@ -236,7 +255,8 @@ class _DialpadScreenState extends State<DialpadScreen> {
         child: InkWell(
           onTap: _makeCall,
           customBorder: const CircleBorder(),
-          child: const Center(child: Icon(Icons.call_rounded, color: Colors.white, size: 30)),
+          child: const Center(
+              child: Icon(Icons.call_rounded, color: Colors.white, size: 30)),
         ),
       ),
     );
@@ -267,11 +287,18 @@ class _DialpadScreenState extends State<DialpadScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(digit, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w300, color: cs.onSurface)),
+              Text(digit,
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w300,
+                      color: cs.onSurface)),
               if (letters.isNotEmpty)
-                Text(letters, style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 1.5, color: cs.onSurfaceVariant,
-                )),
+                Text(letters,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.5,
+                        color: cs.onSurfaceVariant)),
             ],
           ),
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/call_service.dart';
+import '../services/contact_service.dart';
 import '../widgets/contact_avatar.dart';
 
 class RecentsScreen extends StatefulWidget {
@@ -10,35 +11,55 @@ class RecentsScreen extends StatefulWidget {
   State<RecentsScreen> createState() => _RecentsScreenState();
 }
 
-class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProviderStateMixin {
+class _RecentsScreenState extends State<RecentsScreen>
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final CallService _callService = CallService();
+  final ContactService _contactService = ContactService();
   List<Map<String, dynamic>> _allLogs = [];
+  List<Map<String, dynamic>> _filteredLogs = [];
   bool _isLoading = true;
   late TabController _tabController;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadCallLogs();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCallLogs() async {
-    final logs = await _callService.getCallLog();
-    if (mounted) setState(() { _allLogs = logs; _isLoading = false; });
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    _recomputeFiltered();
   }
 
-  List<Map<String, dynamic>> get _filteredLogs {
-    if (_tabController.index == 1) {
-      return _allLogs.where((l) => l['type'] == 3 || l['type'] == 5).toList();
+  Future<void> _loadCallLogs() async {
+    final logs = await _callService.getCallLog();
+    if (mounted) {
+      _allLogs = logs;
+      _recomputeFiltered();
+      setState(() => _isLoading = false);
     }
-    return _allLogs;
+  }
+
+  void _recomputeFiltered() {
+    setState(() {
+      if (_tabController.index == 1) {
+        _filteredLogs = _allLogs.where((l) => l['type'] == 3 || l['type'] == 5).toList();
+      } else {
+        _filteredLogs = List.from(_allLogs);
+      }
+    });
   }
 
   String _formatTime(int timestamp) {
@@ -90,8 +111,38 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     }
   }
 
+  void _deleteLog(Map<String, dynamic> log) {
+    final id = log['id']?.toString() ?? '';
+    final index = _allLogs.indexOf(log);
+    _allLogs.remove(log);
+    _recomputeFiltered();
+    _callService.deleteCallLog(id);
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Call log deleted'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            if (index >= 0 && index <= _allLogs.length) {
+              _allLogs.insert(index, log);
+            } else {
+              _allLogs.add(log);
+            }
+            _recomputeFiltered();
+            // Note: Can't truly undo on the system side — we'll re-add next refresh
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final cs = Theme.of(context).colorScheme;
 
     return Column(
@@ -99,7 +150,6 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
         // Filter tabs
         TabBar(
           controller: _tabController,
-          onTap: (_) => setState(() {}),
           labelColor: cs.primary,
           unselectedLabelColor: cs.onSurfaceVariant,
           indicatorColor: cs.primary,
@@ -118,7 +168,8 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
                   : RefreshIndicator(
                       onRefresh: _loadCallLogs,
                       child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                        physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics()),
                         padding: const EdgeInsets.only(top: 4),
                         itemCount: _filteredLogs.length,
                         itemBuilder: _buildLogItem,
@@ -135,9 +186,11 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.call_rounded, size: 64, color: cs.onSurfaceVariant.withOpacity(0.25)),
+          Icon(Icons.call_rounded, size: 64,
+              color: cs.onSurfaceVariant.withOpacity(0.25)),
           const SizedBox(height: 16),
-          Text('No recent calls', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
+          Text('No recent calls',
+              style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -154,21 +207,8 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     final isMissed = type == 3 || type == 5;
     final cs = Theme.of(context).colorScheme;
 
-    return Dismissible(
-      key: Key(log['id']?.toString() ?? index.toString()),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: Colors.red,
-        child: const Icon(Icons.delete_rounded, color: Colors.white),
-      ),
-      onDismissed: (_) {
-        final id = log['id']?.toString() ?? '';
-        _allLogs.removeAt(_allLogs.indexOf(log));
-        _callService.deleteCallLog(id);
-        setState(() {});
-      },
+    return InkWell(
+      onLongPress: () => _showContextMenu(log, displayName, number, type, date, duration),
       child: ListTile(
         leading: ContactAvatar(name: displayName, radius: 22),
         title: Text(
@@ -185,17 +225,20 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
           children: [
             Icon(_typeIcon(type), size: 14, color: _typeColor(type)),
             const SizedBox(width: 4),
-            Text(_typeLabel(type), style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+            Text(_typeLabel(type),
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
             if (duration > 0) ...[
               Text(' · ', style: TextStyle(color: cs.onSurfaceVariant)),
-              Text(_formatDuration(duration), style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+              Text(_formatDuration(duration),
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
             ],
           ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_formatTime(date), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            Text(_formatTime(date),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
             const SizedBox(width: 4),
             IconButton(
               icon: Icon(Icons.call_rounded, size: 20, color: cs.primary),
@@ -209,8 +252,67 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     );
   }
 
+  void _showContextMenu(
+      Map<String, dynamic> log, String name, String number, int type, int date, int duration) {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(
+              color: cs.outlineVariant, borderRadius: BorderRadius.circular(2),
+            )),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.call_rounded),
+              title: Text('Call $name'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _callService.makeCall(number);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.message_rounded),
+              title: const Text('Send message'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _contactService.openSms(number);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: const Text('Delete'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _deleteLog(log);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.block_rounded),
+              title: const Text('Block number'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _callService.openBlockedNumbers();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showCallDetails(String name, String number, int type, int date, int duration) {
     final cs = Theme.of(context).colorScheme;
+    final dateObj = DateTime.fromMillisecondsSinceEpoch(date);
+    final exactTime = DateFormat('EEEE, MMM d · h:mm a').format(dateObj);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLow,
@@ -230,17 +332,33 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
               children: [
                 ContactAvatar(name: name, radius: 28),
                 const SizedBox(width: 16),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text(number, style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
-                  ],
-                )),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text(number, style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
+            // Exact timestamp and duration
+            Row(
+              children: [
+                Icon(_typeIcon(type), size: 16, color: _typeColor(type)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$exactTime${duration > 0 ? ' · ${_formatDuration(duration)}' : ''}',
+                    style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -248,7 +366,10 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
                   Navigator.pop(ctx);
                   _callService.makeCall(number);
                 }),
-                _sheetAction(Icons.message_rounded, 'Message', cs.primary, () => Navigator.pop(ctx)),
+                _sheetAction(Icons.message_rounded, 'Message', cs.primary, () {
+                  Navigator.pop(ctx);
+                  _contactService.openSms(number);
+                }),
                 _sheetAction(Icons.info_outline_rounded, 'Details', cs.primary, () => Navigator.pop(ctx)),
               ],
             ),
@@ -266,11 +387,15 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
         children: [
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.12)),
+            decoration: BoxDecoration(
+                shape: BoxShape.circle, color: color.withOpacity(0.12)),
             child: Icon(icon, color: color, size: 22),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );

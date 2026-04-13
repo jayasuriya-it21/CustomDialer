@@ -8,6 +8,8 @@ import 'screens/dialpad_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/call_service.dart';
+import 'services/contact_service.dart';
+import 'services/favorites_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -17,17 +19,17 @@ void main() {
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
-  runApp(const GoogleDialerApp());
+  runApp(const DialerApp());
 }
 
-class GoogleDialerApp extends StatefulWidget {
-  const GoogleDialerApp({super.key});
+class DialerApp extends StatefulWidget {
+  const DialerApp({super.key});
 
   @override
-  State<GoogleDialerApp> createState() => _GoogleDialerAppState();
+  State<DialerApp> createState() => _DialerAppState();
 }
 
-class _GoogleDialerAppState extends State<GoogleDialerApp> {
+class _DialerAppState extends State<DialerApp> {
   final ThemeProvider _theme = ThemeProvider();
 
   @override
@@ -68,8 +70,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 1;
+  int _currentIndex = 1; // Start on Recents
   final CallService _callService = CallService();
+  final ContactService _contactService = ContactService();
+  final FavoritesService _favoritesService = FavoritesService();
 
   @override
   void initState() {
@@ -84,6 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
       Permission.microphone,
       Permission.storage,
     ].request();
+
+    // Pre-cache contacts and favorites in parallel (non-blocking)
+    _contactService.preload();
+    _favoritesService.load();
+
     _callService.listenToCallEvents();
     _callService.requestDefaultDialer();
   }
@@ -184,15 +193,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // Body - IndexedStack keeps tab state alive
+              // Body
               Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: const [
-                    _FavouritesPlaceholder(),
-                    RecentsScreen(),
-                    ContactsScreen(),
-                  ],
+                child: RepaintBoundary(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: const [
+                      RecentsScreen(),
+                      RecentsScreen(),
+                      ContactsScreen(),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -225,30 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: const Icon(Icons.dialpad_rounded, size: 26),
         ),
-      ),
-    );
-  }
-}
-
-class _FavouritesPlaceholder extends StatelessWidget {
-  const _FavouritesPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.star_outline_rounded, size: 64, color: cs.onSurfaceVariant.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          Text('No favourites yet', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
-          const SizedBox(height: 8),
-          Text(
-            'Add favourites from your contacts',
-            style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant.withOpacity(0.6)),
-          ),
-        ],
       ),
     );
   }

@@ -4,14 +4,17 @@ import android.app.role.RoleManager
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.media.AudioManager
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
+import android.telephony.SubscriptionManager
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -135,21 +138,9 @@ class MainActivity : FlutterActivity() {
                             val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
                             am.mode = AudioManager.MODE_IN_COMMUNICATION
                             when (route) {
-                                0 -> { // Earpiece
-                                    am.isSpeakerphoneOn = false
-                                    am.isBluetoothScoOn = false
-                                    am.stopBluetoothSco()
-                                }
-                                1 -> { // Speaker
-                                    am.isBluetoothScoOn = false
-                                    am.stopBluetoothSco()
-                                    am.isSpeakerphoneOn = true
-                                }
-                                2 -> { // Bluetooth
-                                    am.isSpeakerphoneOn = false
-                                    am.startBluetoothSco()
-                                    am.isBluetoothScoOn = true
-                                }
+                                0 -> { am.isSpeakerphoneOn = false; am.isBluetoothScoOn = false; am.stopBluetoothSco() }
+                                1 -> { am.isBluetoothScoOn = false; am.stopBluetoothSco(); am.isSpeakerphoneOn = true }
+                                2 -> { am.isSpeakerphoneOn = false; am.startBluetoothSco(); am.isBluetoothScoOn = true }
                             }
                         }
                         result.success(true)
@@ -161,16 +152,92 @@ class MainActivity : FlutterActivity() {
                     "deleteCallLog" -> {
                         val id = call.argument<String>("id") ?: ""
                         if (id.isNotEmpty()) {
-                            contentResolver.delete(
-                                CallLog.Calls.CONTENT_URI,
-                                "${CallLog.Calls._ID} = ?",
-                                arrayOf(id)
-                            )
+                            contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} = ?", arrayOf(id))
                             result.success(true)
                         } else {
                             result.success(false)
                         }
                     }
+
+                    // ---- New: Intents ----
+
+                    "addContact" -> {
+                        val number = call.argument<String>("number") ?: ""
+                        val name = call.argument<String>("name") ?: ""
+                        val intent = Intent(Intent.ACTION_INSERT).apply {
+                            type = ContactsContract.Contacts.CONTENT_TYPE
+                            putExtra(ContactsContract.Intents.Insert.PHONE, number)
+                            if (name.isNotEmpty()) putExtra(ContactsContract.Intents.Insert.NAME, name)
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    }
+                    "openSms" -> {
+                        val number = call.argument<String>("number") ?: ""
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("smsto:$number")
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    }
+                    "openWhatsApp" -> {
+                        val number = call.argument<String>("number") ?: ""
+                        try {
+                            val cleanNum = number.replace(Regex("[\\s\\-\\(\\)\\+]"), "")
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://wa.me/$cleanNum")
+                                setPackage("com.whatsapp")
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "openVideoCall" -> {
+                        val number = call.argument<String>("number") ?: ""
+                        try {
+                            // Try Google Duo/Meet first
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://meet.google.com")
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    }
+                    "openCallForwardingSettings" -> {
+                        try {
+                            val intent = Intent("android.settings.CALL_SETTINGS")
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (_: Exception) { result.success(false) }
+                    }
+                    "openBlockedNumbers" -> {
+                        try {
+                            val telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+                            startActivity(telecomManager.createManageBlockedNumbersIntent())
+                            result.success(true)
+                        } catch (_: Exception) { result.success(false) }
+                    }
+                    "openRingtonePicker" -> {
+                        try {
+                            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Ringtone")
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (_: Exception) { result.success(false) }
+                    }
+                    "getSimInfo" -> {
+                        Thread {
+                            val sims = getSimCards()
+                            runOnUiThread { result.success(sims) }
+                        }.start()
+                    }
+
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {
@@ -208,7 +275,7 @@ class MainActivity : FlutterActivity() {
                 "${CallLog.Calls.DATE} DESC"
             )
             cursor?.use {
-                val limit = minOf(it.count, 200)
+                val limit = minOf(it.count, 300)
                 var count = 0
                 while (it.moveToNext() && count < limit) {
                     logs.add(mapOf(
@@ -287,7 +354,6 @@ class MainActivity : FlutterActivity() {
                     result["name"] = it.getString(1) ?: ""
                     result["photoUri"] = it.getString(2) ?: ""
 
-                    // Get all phone numbers for this contact
                     val phones = mutableListOf<Map<String, String>>()
                     val phoneCursor = contentResolver.query(
                         ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -317,6 +383,25 @@ class MainActivity : FlutterActivity() {
             }
         } catch (_: Exception) { }
         return result
+    }
+
+    private fun getSimCards(): List<Map<String, Any?>> {
+        val sims = mutableListOf<Map<String, Any?>>()
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                val sm = getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+                val subList = sm?.activeSubscriptionInfoList ?: emptyList()
+                for (sub in subList) {
+                    sims.add(mapOf(
+                        "slot" to sub.simSlotIndex,
+                        "carrier" to (sub.carrierName?.toString() ?: "SIM ${sub.simSlotIndex + 1}"),
+                        "number" to (sub.number ?: ""),
+                        "subscriptionId" to sub.subscriptionId
+                    ))
+                }
+            }
+        } catch (_: Exception) { }
+        return sims
     }
 
     private fun requestDefaultDialer(result: MethodChannel.Result) {

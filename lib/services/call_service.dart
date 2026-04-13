@@ -1,7 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import '../screens/incoming_call_screen.dart';
 import '../screens/in_call_screen.dart';
 import '../main.dart';
+import 'contact_service.dart';
 
 class CallService {
   static const MethodChannel _channel = MethodChannel('com.example.google_dialer/incall');
@@ -11,6 +13,9 @@ class CallService {
 
   final ValueNotifier<String> callState = ValueNotifier('idle');
   final ValueNotifier<bool> canMerge = ValueNotifier(false);
+  final ContactService _contactService = ContactService();
+
+  // ---- Dialer Role ----
 
   Future<void> requestDefaultDialer() async {
     try {
@@ -19,6 +24,8 @@ class CallService {
       debugPrint("Default dialer request failed: $e");
     }
   }
+
+  // ---- Call Management ----
 
   Future<bool> makeCall(String number) async {
     try {
@@ -65,6 +72,8 @@ class CallService {
     try { await _channel.invokeMethod('sendDtmf', {'digit': digit}); } catch (_) {}
   }
 
+  // ---- Audio Routing ----
+
   Future<void> toggleSpeaker(bool enable) async {
     try { await _channel.invokeMethod('toggleSpeaker', {'enable': enable}); } catch (_) {}
   }
@@ -74,7 +83,6 @@ class CallService {
   }
 
   Future<void> setAudioRoute(int route) async {
-    // 0=earpiece, 1=speaker, 2=bluetooth
     try { await _channel.invokeMethod('setAudioRoute', {'route': route}); } catch (_) {}
   }
 
@@ -84,6 +92,8 @@ class CallService {
       return r == true;
     } catch (_) { return false; }
   }
+
+  // ---- Call Log ----
 
   Future<List<Map<String, dynamic>>> getCallLog() async {
     try {
@@ -97,31 +107,35 @@ class CallService {
     return [];
   }
 
-  Future<List<Map<String, dynamic>>> getContacts() async {
-    try {
-      final result = await _channel.invokeMethod('getContacts');
-      if (result is List) {
-        return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-    } catch (e) {
-      debugPrint("Get contacts failed: $e");
-    }
-    return [];
-  }
-
-  Future<Map<String, dynamic>> getContactDetails(String number) async {
-    try {
-      final result = await _channel.invokeMethod('getContactDetails', {'number': number});
-      if (result is Map) {
-        return Map<String, dynamic>.from(result);
-      }
-    } catch (_) {}
-    return {};
-  }
-
   Future<void> deleteCallLog(String id) async {
     try { await _channel.invokeMethod('deleteCallLog', {'id': id}); } catch (_) {}
   }
+
+  // ---- Settings Intents ----
+
+  Future<void> openCallForwardingSettings() async {
+    try { await _channel.invokeMethod('openCallForwardingSettings'); } catch (_) {}
+  }
+
+  Future<void> openBlockedNumbers() async {
+    try { await _channel.invokeMethod('openBlockedNumbers'); } catch (_) {}
+  }
+
+  Future<void> openRingtonePicker() async {
+    try { await _channel.invokeMethod('openRingtonePicker'); } catch (_) {}
+  }
+
+  Future<List<Map<String, dynamic>>> getSimInfo() async {
+    try {
+      final result = await _channel.invokeMethod('getSimInfo');
+      if (result is List) {
+        return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // ---- Event Listener ----
 
   void listenToCallEvents() {
     _channel.setMethodCallHandler((call) async {
@@ -131,7 +145,15 @@ class CallService {
           final number = args['number'] as String? ?? 'Unknown';
           final stateStr = args['stateStr'] as String? ?? 'unknown';
           callState.value = stateStr;
-          _navigateToInCallScreen(number, isIncoming: stateStr == 'ringing');
+
+          // Lookup contact name asynchronously
+          final callerName = await _contactService.lookupName(number);
+
+          if (stateStr == 'ringing') {
+            _navigateToIncomingScreen(callerName, number);
+          } else {
+            _navigateToInCallScreen(callerName, isIncoming: false);
+          }
           break;
         case 'onCallStateChanged':
           final args = Map<String, dynamic>.from(call.arguments as Map);
@@ -153,14 +175,33 @@ class CallService {
     });
   }
 
-  void _navigateToInCallScreen(String callerNumber, {bool isIncoming = true}) {
+  void _navigateToIncomingScreen(String callerName, String callerNumber) {
+    final nav = navigatorKey.currentState;
+    if (nav != null) {
+      nav.push(
+        PageRouteBuilder(
+          opaque: true,
+          pageBuilder: (_, __, ___) => IncomingCallScreen(
+            callerName: callerName,
+            callerNumber: callerNumber,
+          ),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 150),
+        ),
+      );
+    }
+  }
+
+  void _navigateToInCallScreen(String callerName, {bool isIncoming = false}) {
     final nav = navigatorKey.currentState;
     if (nav != null) {
       nav.push(
         PageRouteBuilder(
           opaque: true,
           pageBuilder: (_, __, ___) => InCallScreen(
-            callerName: callerNumber,
+            callerName: callerName,
             isIncoming: isIncoming,
           ),
           transitionsBuilder: (_, animation, __, child) {
