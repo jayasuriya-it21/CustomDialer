@@ -31,11 +31,12 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
 
   Future<void> _loadCallLogs() async {
     final logs = await _callService.getCallLog();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _allLogs = logs;
         _isLoading = false;
       });
+    }
   }
 
   List<Map<String, dynamic>> get _filteredLogs {
