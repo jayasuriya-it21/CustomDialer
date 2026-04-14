@@ -4,9 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeProvider extends ChangeNotifier {
   static final ThemeProvider _instance = ThemeProvider._internal();
   factory ThemeProvider() => _instance;
-  ThemeProvider._internal() {
-    _loadPrefs();
-  }
+  ThemeProvider._internal();
 
   ThemeMode _themeMode = ThemeMode.system;
   Color _seedColor = const Color(0xFF1A73E8);
@@ -28,6 +26,16 @@ class ThemeProvider extends ChangeNotifier {
     Color(0xFF455A64), // Blue Grey
     Color(0xFF1DE9B6), // Mint
   ];
+
+  bool _isInitialized = false;
+
+  Future<void> initialize() async {
+    if (_isInitialized) {
+      return;
+    }
+    await _loadPrefs();
+    _isInitialized = true;
+  }
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();

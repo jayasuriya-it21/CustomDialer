@@ -20,7 +20,10 @@ class _DialpadScreenState extends State<DialpadScreen> {
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    // Load contacts after first frame to keep dialpad responsive
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) await _loadContacts();
+    });
   }
 
   Future<void> _loadContacts() async {

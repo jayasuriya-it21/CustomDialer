@@ -20,7 +20,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    // Defer loading until after first frame to reduce startup jank
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadContacts();
+    });
   }
 
   Future<void> _loadContacts() async {
@@ -59,7 +62,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
     final cs = Theme.of(context).colorScheme;
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const SizedBox.expand(
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
     }
 
     if (_contacts.isEmpty) {

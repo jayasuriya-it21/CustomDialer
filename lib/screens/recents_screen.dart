@@ -13,6 +13,7 @@ class RecentsScreen extends StatefulWidget {
 class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProviderStateMixin {
   final CallService _callService = CallService();
   List<Map<String, dynamic>> _allLogs = [];
+  List<Map<String, dynamic>> _visibleLogs = [];
   bool _isLoading = true;
   late TabController _tabController;
 
@@ -20,13 +21,37 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadCallLogs();
+    _tabController.addListener(_onTabChanged);
+    // Defer loading until after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadCallLogs();
+    });
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) {
+      return;
+    }
+    _applyFilter();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _applyFilter() {
+    final showMissedOnly = _tabController.index == 1;
+    final filtered = showMissedOnly ? _allLogs.where((l) => l['type'] == 3 || l['type'] == 5).toList() : List<Map<String, dynamic>>.from(_allLogs);
+    if (!mounted) {
+      _visibleLogs = filtered;
+      return;
+    }
+    setState(() {
+      _visibleLogs = filtered;
+    });
   }
 
   Future<void> _loadCallLogs() async {
@@ -34,16 +59,10 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     if (mounted) {
       setState(() {
         _allLogs = logs;
+        _visibleLogs = _tabController.index == 1 ? logs.where((l) => l['type'] == 3 || l['type'] == 5).toList() : List<Map<String, dynamic>>.from(logs);
         _isLoading = false;
       });
     }
-  }
-
-  List<Map<String, dynamic>> get _filteredLogs {
-    if (_tabController.index == 1) {
-      return _allLogs.where((l) => l['type'] == 3 || l['type'] == 5).toList();
-    }
-    return _allLogs;
   }
 
   String _formatTime(int timestamp) {
@@ -119,7 +138,6 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
         // Filter tabs
         TabBar(
           controller: _tabController,
-          onTap: (_) => setState(() {}),
           labelColor: cs.primary,
           unselectedLabelColor: cs.onSurfaceVariant,
           indicatorColor: cs.primary,
@@ -133,14 +151,14 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-              : _filteredLogs.isEmpty
+              : _visibleLogs.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
                   onRefresh: _loadCallLogs,
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     padding: const EdgeInsets.only(top: 4),
-                    itemCount: _filteredLogs.length,
+                    itemCount: _visibleLogs.length,
                     itemBuilder: _buildLogItem,
                   ),
                 ),
@@ -164,7 +182,7 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
   }
 
   Widget _buildLogItem(BuildContext context, int index) {
-    final log = _filteredLogs[index];
+    final log = _visibleLogs[index];
     final name = (log['name'] as String?) ?? '';
     final number = (log['number'] as String?) ?? '';
     final type = (log['type'] as int?) ?? 0;
@@ -185,7 +203,8 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
       ),
       onDismissed: (_) {
         final id = log['id']?.toString() ?? '';
-        _allLogs.removeAt(_allLogs.indexOf(log));
+        _allLogs.removeWhere((entry) => entry['id']?.toString() == id);
+        _visibleLogs.removeAt(index);
         _callService.deleteCallLog(id);
         setState(() {});
       },

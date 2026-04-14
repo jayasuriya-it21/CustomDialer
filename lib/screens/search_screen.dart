@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../services/call_service.dart';
 import '../widgets/contact_avatar.dart';
@@ -13,21 +15,25 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final CallService _callService = CallService();
+  Timer? _searchDebounce;
 
-  List<Map<String, dynamic>> _allContacts = [];
-  List<Map<String, dynamic>> _allLogs = [];
   List<Map<String, dynamic>> _results = [];
+  List<_SearchEntry> _searchPool = [];
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    _focusNode.requestFocus();
-    _controller.addListener(_search);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+    _controller.addListener(_onQueryChanged);
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _controller.removeListener(_onQueryChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -36,12 +42,23 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _loadData() async {
     final contacts = await _callService.getContacts();
     final logs = await _callService.getCallLog();
+    final searchPool = <_SearchEntry>[];
+    for (final c in contacts) {
+      searchPool.add(_SearchEntry(item: c, nameLc: ((c['name'] as String?) ?? '').toLowerCase(), number: (c['number'] as String?) ?? ''));
+    }
+    for (final l in logs) {
+      searchPool.add(_SearchEntry(item: l, nameLc: ((l['name'] as String?) ?? '').toLowerCase(), number: (l['number'] as String?) ?? ''));
+    }
     if (mounted) {
       setState(() {
-        _allContacts = contacts;
-        _allLogs = logs;
+        _searchPool = searchPool;
       });
     }
+  }
+
+  void _onQueryChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 110), _search);
   }
 
   void _search() {
@@ -54,33 +71,19 @@ class _SearchScreenState extends State<SearchScreen> {
     final Set<String> seen = {};
     final matches = <Map<String, dynamic>>[];
 
-    // Search contacts
-    for (final c in _allContacts) {
-      final name = (c['name'] as String? ?? '').toLowerCase();
-      final number = (c['number'] as String? ?? '');
-      if (name.contains(q) || number.contains(q)) {
-        final key = '$name|$number';
-        if (!seen.contains(key)) {
-          seen.add(key);
-          matches.add({...c, 'source': 'contact'});
+    for (final entry in _searchPool) {
+      if (entry.nameLc.contains(q) || entry.number.contains(q)) {
+        final key = '${entry.nameLc}|${entry.number}';
+        if (seen.add(key)) {
+          matches.add(entry.item);
         }
+      }
+      if (matches.length >= 20) {
+        break;
       }
     }
 
-    // Search call logs
-    for (final l in _allLogs) {
-      final name = (l['name'] as String? ?? '').toLowerCase();
-      final number = (l['number'] as String? ?? '');
-      if (name.contains(q) || number.contains(q)) {
-        final key = '$name|$number';
-        if (!seen.contains(key)) {
-          seen.add(key);
-          matches.add({...l, 'source': 'log'});
-        }
-      }
-    }
-
-    setState(() => _results = matches.take(20).toList());
+    setState(() => _results = matches);
   }
 
   @override
@@ -115,6 +118,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       icon: const Icon(Icons.close_rounded),
                       onPressed: () {
                         _controller.clear();
+                        _searchDebounce?.cancel();
                         setState(() => _results = []);
                       },
                     ),
@@ -159,4 +163,12 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
+}
+
+class _SearchEntry {
+  final Map<String, dynamic> item;
+  final String nameLc;
+  final String number;
+
+  const _SearchEntry({required this.item, required this.nameLc, required this.number});
 }

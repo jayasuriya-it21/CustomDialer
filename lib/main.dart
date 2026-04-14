@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -11,41 +13,27 @@ import 'services/call_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final themeProvider = ThemeProvider();
+  await themeProvider.initialize();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
-  runApp(const GoogleDialerApp());
+  runApp(GoogleDialerApp(themeProvider: themeProvider));
 }
 
-class GoogleDialerApp extends StatefulWidget {
-  const GoogleDialerApp({super.key});
+class GoogleDialerApp extends StatelessWidget {
+  final ThemeProvider themeProvider;
 
-  @override
-  State<GoogleDialerApp> createState() => _GoogleDialerAppState();
-}
-
-class _GoogleDialerAppState extends State<GoogleDialerApp> {
-  final ThemeProvider _theme = ThemeProvider();
-
-  @override
-  void initState() {
-    super.initState();
-    _theme.addListener(_onThemeChanged);
-  }
-
-  void _onThemeChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _theme.removeListener(_onThemeChanged);
-    super.dispose();
-  }
+  const GoogleDialerApp({super.key, required this.themeProvider});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(navigatorKey: navigatorKey, title: 'Phone', debugShowCheckedModeBanner: false, theme: _theme.buildLightTheme(), darkTheme: _theme.buildDarkTheme(), themeMode: _theme.themeMode, home: const HomeScreen());
+    return AnimatedBuilder(
+      animation: themeProvider,
+      builder: (context, _) {
+        return MaterialApp(navigatorKey: navigatorKey, title: 'Phone', debugShowCheckedModeBanner: false, theme: themeProvider.buildLightTheme(), darkTheme: themeProvider.buildDarkTheme(), themeMode: themeProvider.themeMode, themeAnimationDuration: const Duration(milliseconds: 180), themeAnimationCurve: Curves.easeOutCubic, home: const HomeScreen());
+      },
+    );
   }
 }
 
@@ -59,17 +47,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 1;
   final CallService _callService = CallService();
+  final List<bool> _tabInitialized = [false, false, false];
 
   @override
   void initState() {
     super.initState();
-    _initApp();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initAppAfterFirstFrame();
+    });
   }
 
-  Future<void> _initApp() async {
-    await [Permission.phone, Permission.contacts, Permission.microphone, Permission.storage].request();
+  Future<void> _initAppAfterFirstFrame() async {
     _callService.listenToCallEvents();
-    _callService.requestDefaultDialer();
+    unawaited(_requestEssentialPermissions());
+  }
+
+  Future<void> _requestEssentialPermissions() async {
+    final statuses = await [Permission.phone, Permission.contacts, Permission.microphone, Permission.storage].request();
+    if (statuses[Permission.phone]?.isGranted ?? false) {
+      await _callService.requestDefaultDialer();
+    }
   }
 
   void _openDialpad() {
@@ -77,13 +74,17 @@ class _HomeScreenState extends State<HomeScreen> {
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const DialpadScreen(),
         transitionsBuilder: (_, animation, _, child) {
-          return SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-            child: child,
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(curved),
+              child: child,
+            ),
           );
         },
-        transitionDuration: const Duration(milliseconds: 280),
-        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionDuration: const Duration(milliseconds: 200),
+        reverseTransitionDuration: const Duration(milliseconds: 150),
       ),
     );
   }
@@ -93,9 +94,14 @@ class _HomeScreenState extends State<HomeScreen> {
       PageRouteBuilder(
         pageBuilder: (_, _, _) => const SearchScreen(),
         transitionsBuilder: (_, animation, _, child) {
-          return FadeTransition(opacity: animation, child: child);
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(scale: Tween<double>(begin: 0.985, end: 1.0).animate(curved), child: child),
+          );
         },
-        transitionDuration: const Duration(milliseconds: 200),
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 150),
       ),
     );
   }
@@ -107,6 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // Mark tab as initialized when selected for lazy loading
+    if (!_tabInitialized[_currentIndex]) {
+      _tabInitialized[_currentIndex] = true;
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: cs.brightness == Brightness.dark ? Brightness.light : Brightness.dark, systemNavigationBarColor: cs.surfaceContainerLow),
@@ -117,33 +127,35 @@ class _HomeScreenState extends State<HomeScreen> {
               // Search Bar
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                child: Material(
-                  color: cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(28),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: _openSearch,
+                child: RepaintBoundary(
+                  child: Material(
+                    color: cs.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(28),
-                    child: SizedBox(
-                      height: 48,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.search_rounded, color: cs.onSurfaceVariant, size: 22),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text('Search contacts & places', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 16)),
-                            ),
-                            GestureDetector(
-                              onTap: _openSettings,
-                              child: CircleAvatar(
-                                radius: 16,
-                                backgroundColor: cs.primary,
-                                child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: _openSearch,
+                      borderRadius: BorderRadius.circular(28),
+                      child: SizedBox(
+                        height: 48,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.search_rounded, color: cs.onSurfaceVariant, size: 22),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text('Search contacts & places', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 16)),
                               ),
-                            ),
-                          ],
+                              GestureDetector(
+                                onTap: _openSettings,
+                                child: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: cs.primary,
+                                  child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -151,9 +163,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // Body - IndexedStack keeps tab state alive
+              // Body - Lazy-loaded tabs (only init when selected)
               Expanded(
-                child: IndexedStack(index: _currentIndex, children: const [_FavouritesPlaceholder(), RecentsScreen(), ContactsScreen()]),
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: [
+                    const _FavouritesPlaceholder(),
+                    _tabInitialized[1] ? const RecentsScreen() : const SizedBox.shrink(),
+                    _tabInitialized[2] ? const ContactsScreen() : const SizedBox.shrink(),
+                  ],
+                ),
               ),
             ],
           ),
