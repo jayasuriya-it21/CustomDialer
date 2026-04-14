@@ -44,12 +44,12 @@ class ContactAvatar extends StatelessWidget {
       avatar = CircleAvatar(
         radius: radius,
         backgroundImage: NetworkImage(photoUri!),
-        backgroundColor: color.withOpacity(isDark ? 0.3 : 0.15),
+        backgroundColor: color.withValues(alpha: isDark ? 0.3 : 0.15),
       );
     } else {
       avatar = CircleAvatar(
         radius: radius,
-        backgroundColor: color.withOpacity(isDark ? 0.25 : 0.12),
+        backgroundColor: color.withValues(alpha: isDark ? 0.25 : 0.12),
         child: Text(
           initials,
           style: TextStyle(
@@ -71,3 +71,4 @@ class ContactAvatar extends StatelessWidget {
     return avatar;
   }
 }
+

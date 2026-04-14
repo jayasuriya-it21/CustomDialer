@@ -1,8 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import '../core/constants/method_channels.dart';
 
 class ContactService {
-  static const MethodChannel _channel = MethodChannel('com.example.google_dialer/incall');
+  static const MethodChannel _channel = MethodChannel(MethodChannels.inCall);
   static final ContactService _instance = ContactService._internal();
   factory ContactService() => _instance;
   ContactService._internal();
@@ -63,10 +64,7 @@ class ContactService {
   /// Open system "Add Contact" screen with pre-filled number
   Future<void> addContact(String number, {String? name}) async {
     try {
-      await _channel.invokeMethod('addContact', {
-        'number': number,
-        'name': name ?? '',
-      });
+      await _channel.invokeMethod('addContact', {'number': number, 'name': name ?? ''});
     } catch (e) {
       debugPrint("Add contact intent failed: $e");
     }

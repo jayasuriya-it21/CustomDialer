@@ -1,12 +1,14 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import '../screens/incoming_call_screen.dart';
-import '../screens/in_call_screen.dart';
-import '../main.dart';
+import '../config/app_router.dart';
+import '../core/constants/method_channels.dart';
+import '../core/constants/ui_constants.dart';
+import '../features/call/presentation/screens/incoming_call_screen.dart';
+import '../features/call/presentation/screens/in_call_screen.dart';
 import 'contact_service.dart';
 
 class CallService {
-  static const MethodChannel _channel = MethodChannel('com.example.google_dialer/incall');
+  static const MethodChannel _channel = MethodChannel(MethodChannels.inCall);
   static final CallService _instance = CallService._internal();
   factory CallService() => _instance;
   CallService._internal();
@@ -38,59 +40,83 @@ class CallService {
   }
 
   Future<void> answerCall() async {
-    try { await _channel.invokeMethod('answerCall'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('answerCall');
+    } catch (_) {}
   }
 
   Future<void> rejectCall() async {
-    try { await _channel.invokeMethod('rejectCall'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('rejectCall');
+    } catch (_) {}
   }
 
   Future<void> disconnectCall() async {
-    try { await _channel.invokeMethod('disconnectCall'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('disconnectCall');
+    } catch (_) {}
   }
 
   Future<void> holdCall() async {
-    try { await _channel.invokeMethod('holdCall'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('holdCall');
+    } catch (_) {}
   }
 
   Future<void> unholdCall() async {
-    try { await _channel.invokeMethod('unholdCall'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('unholdCall');
+    } catch (_) {}
   }
 
   Future<bool> mergeConference() async {
     try {
       final r = await _channel.invokeMethod('mergeConference');
       return r == true;
-    } catch (_) { return false; }
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> swapConference() async {
-    try { await _channel.invokeMethod('swapConference'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('swapConference');
+    } catch (_) {}
   }
 
   Future<void> sendDtmf(String digit) async {
-    try { await _channel.invokeMethod('sendDtmf', {'digit': digit}); } catch (_) {}
+    try {
+      await _channel.invokeMethod('sendDtmf', {'digit': digit});
+    } catch (_) {}
   }
 
   // ---- Audio Routing ----
 
   Future<void> toggleSpeaker(bool enable) async {
-    try { await _channel.invokeMethod('toggleSpeaker', {'enable': enable}); } catch (_) {}
+    try {
+      await _channel.invokeMethod('toggleSpeaker', {'enable': enable});
+    } catch (_) {}
   }
 
   Future<void> toggleMute(bool enable) async {
-    try { await _channel.invokeMethod('toggleMute', {'enable': enable}); } catch (_) {}
+    try {
+      await _channel.invokeMethod('toggleMute', {'enable': enable});
+    } catch (_) {}
   }
 
   Future<void> setAudioRoute(int route) async {
-    try { await _channel.invokeMethod('setAudioRoute', {'route': route}); } catch (_) {}
+    try {
+      await _channel.invokeMethod('setAudioRoute', {'route': route});
+    } catch (_) {}
   }
 
   Future<bool> isBluetoothAvailable() async {
     try {
       final r = await _channel.invokeMethod('isBluetoothAvailable');
       return r == true;
-    } catch (_) { return false; }
+    } catch (_) {
+      return false;
+    }
   }
 
   // ---- Call Log ----
@@ -108,21 +134,29 @@ class CallService {
   }
 
   Future<void> deleteCallLog(String id) async {
-    try { await _channel.invokeMethod('deleteCallLog', {'id': id}); } catch (_) {}
+    try {
+      await _channel.invokeMethod('deleteCallLog', {'id': id});
+    } catch (_) {}
   }
 
   // ---- Settings Intents ----
 
   Future<void> openCallForwardingSettings() async {
-    try { await _channel.invokeMethod('openCallForwardingSettings'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('openCallForwardingSettings');
+    } catch (_) {}
   }
 
   Future<void> openBlockedNumbers() async {
-    try { await _channel.invokeMethod('openBlockedNumbers'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('openBlockedNumbers');
+    } catch (_) {}
   }
 
   Future<void> openRingtonePicker() async {
-    try { await _channel.invokeMethod('openRingtonePicker'); } catch (_) {}
+    try {
+      await _channel.invokeMethod('openRingtonePicker');
+    } catch (_) {}
   }
 
   Future<List<Map<String, dynamic>>> getSimInfo() async {
@@ -181,7 +215,7 @@ class CallService {
         case 'onCallRemoved':
           callState.value = 'idle';
           _callScreenShowing = false;
-          final nav = navigatorKey.currentState;
+          final nav = appNavigatorKey.currentState;
           if (nav != null && nav.canPop()) {
             nav.pop();
           }
@@ -192,19 +226,16 @@ class CallService {
 
   void _navigateToIncomingScreen(String callerName, String callerNumber) {
     _callScreenShowing = true;
-    final nav = navigatorKey.currentState;
+    final nav = appNavigatorKey.currentState;
     if (nav != null) {
       nav.push(
         PageRouteBuilder(
           opaque: true,
-          pageBuilder: (_, __, ___) => IncomingCallScreen(
-            callerName: callerName,
-            callerNumber: callerNumber,
-          ),
-          transitionsBuilder: (_, animation, __, child) {
+          pageBuilder: (_, _, _) => IncomingCallScreen(callerName: callerName, callerNumber: callerNumber),
+          transitionsBuilder: (_, animation, _, child) {
             return FadeTransition(opacity: animation, child: child);
           },
-          transitionDuration: const Duration(milliseconds: 150),
+          transitionDuration: UiConstants.incomingCallTransitionDuration,
         ),
       );
     }
@@ -212,19 +243,16 @@ class CallService {
 
   void _navigateToInCallScreen(String callerName, {bool isIncoming = false}) {
     _callScreenShowing = true;
-    final nav = navigatorKey.currentState;
+    final nav = appNavigatorKey.currentState;
     if (nav != null) {
       nav.push(
         PageRouteBuilder(
           opaque: true,
-          pageBuilder: (_, __, ___) => InCallScreen(
-            callerName: callerName,
-            isIncoming: isIncoming,
-          ),
-          transitionsBuilder: (_, animation, __, child) {
+          pageBuilder: (_, _, _) => InCallScreen(callerName: callerName, isIncoming: isIncoming),
+          transitionsBuilder: (_, animation, _, child) {
             return FadeTransition(opacity: animation, child: child);
           },
-          transitionDuration: const Duration(milliseconds: 200),
+          transitionDuration: UiConstants.inCallTransitionDuration,
         ),
       );
     }

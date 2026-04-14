@@ -1,21 +1,19 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/shared_prefs_keys.dart';
+import '../core/storage/app_storage.dart';
 
 class FavoritesService {
   static final FavoritesService _instance = FavoritesService._internal();
   factory FavoritesService() => _instance;
   FavoritesService._internal();
 
-  static const _key = 'favorite_contacts';
+  static const _key = SharedPrefsKeys.favoriteContacts;
   Set<String> _favoriteIds = {};
   bool _loaded = false;
 
   Future<void> load() async {
     if (_loaded) return;
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_key) ?? [];
-    _favoriteIds = list.toSet();
+    final list = await AppStorage.instance.getValue<List<dynamic>>(_key, []);
+    _favoriteIds = list.map((e) => e.toString()).toSet();
     _loaded = true;
   }
 
@@ -27,8 +25,7 @@ class FavoritesService {
     } else {
       _favoriteIds.add(contactId);
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_key, _favoriteIds.toList());
+    await AppStorage.instance.putValue(_key, _favoriteIds.toList());
   }
 
   Set<String> get favoriteIds => _favoriteIds;

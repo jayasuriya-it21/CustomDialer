@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/shared_prefs_keys.dart';
+import '../core/storage/app_storage.dart';
 
 class RecordingMeta {
   final String path;
@@ -12,29 +13,11 @@ class RecordingMeta {
   final int dateMs;
   final int durationSeconds;
 
-  RecordingMeta({
-    required this.path,
-    required this.contactName,
-    required this.number,
-    required this.dateMs,
-    this.durationSeconds = 0,
-  });
+  RecordingMeta({required this.path, required this.contactName, required this.number, required this.dateMs, this.durationSeconds = 0});
 
-  Map<String, dynamic> toJson() => {
-    'path': path,
-    'contactName': contactName,
-    'number': number,
-    'dateMs': dateMs,
-    'durationSeconds': durationSeconds,
-  };
+  Map<String, dynamic> toJson() => {'path': path, 'contactName': contactName, 'number': number, 'dateMs': dateMs, 'durationSeconds': durationSeconds};
 
-  factory RecordingMeta.fromJson(Map<String, dynamic> json) => RecordingMeta(
-    path: json['path'] as String? ?? '',
-    contactName: json['contactName'] as String? ?? '',
-    number: json['number'] as String? ?? '',
-    dateMs: json['dateMs'] as int? ?? 0,
-    durationSeconds: json['durationSeconds'] as int? ?? 0,
-  );
+  factory RecordingMeta.fromJson(Map<String, dynamic> json) => RecordingMeta(path: json['path'] as String? ?? '', contactName: json['contactName'] as String? ?? '', number: json['number'] as String? ?? '', dateMs: json['dateMs'] as int? ?? 0, durationSeconds: json['durationSeconds'] as int? ?? 0);
 }
 
 class RecordingService {
@@ -51,17 +34,15 @@ class RecordingService {
 
   bool get isRecording => _isRecording;
 
-  static const _metaKey = 'call_recordings_meta';
-  static const _autoRecordKey = 'auto_record_calls';
+  static const _metaKey = SharedPrefsKeys.callRecordingsMeta;
+  static const _autoRecordKey = SharedPrefsKeys.autoRecordCalls;
 
   Future<bool> get autoRecordEnabled async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_autoRecordKey) ?? false;
+    return AppStorage.instance.getValue<bool>(_autoRecordKey, false);
   }
 
   Future<void> setAutoRecord(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_autoRecordKey, value);
+    await AppStorage.instance.putValue(_autoRecordKey, value);
   }
 
   Future<String> get _recordingsDir async {
@@ -85,10 +66,7 @@ class RecordingService {
       _currentContactName = contactName;
       _currentNumber = number;
 
-      await _recorder!.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000),
-        path: _currentPath!,
-      );
+      await _recorder!.start(const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000), path: _currentPath!);
 
       _isRecording = true;
       _recordStartTime = DateTime.now();
@@ -106,17 +84,9 @@ class RecordingService {
       _isRecording = false;
 
       if (path != null && _currentPath != null) {
-        final duration = _recordStartTime != null
-            ? DateTime.now().difference(_recordStartTime!).inSeconds
-            : 0;
+        final duration = _recordStartTime != null ? DateTime.now().difference(_recordStartTime!).inSeconds : 0;
 
-        final meta = RecordingMeta(
-          path: _currentPath!,
-          contactName: _currentContactName,
-          number: _currentNumber,
-          dateMs: DateTime.now().millisecondsSinceEpoch,
-          durationSeconds: duration,
-        );
+        final meta = RecordingMeta(path: _currentPath!, contactName: _currentContactName, number: _currentNumber, dateMs: DateTime.now().millisecondsSinceEpoch, durationSeconds: duration);
         await _saveMeta(meta);
       }
 
@@ -131,18 +101,18 @@ class RecordingService {
   }
 
   Future<void> _saveMeta(RecordingMeta meta) async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = prefs.getStringList(_metaKey) ?? [];
-    existing.add(jsonEncode(meta.toJson()));
-    await prefs.setStringList(_metaKey, existing);
+    final existing = await AppStorage.instance.getValue<List<dynamic>>(_metaKey, []);
+    final entries = existing.map((e) => e.toString()).toList();
+    entries.add(jsonEncode(meta.toJson()));
+    await AppStorage.instance.putValue(_metaKey, entries);
   }
 
   Future<List<RecordingMeta>> getRecordings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_metaKey) ?? [];
+    final list = await AppStorage.instance.getValue<List<dynamic>>(_metaKey, []);
+    final rawList = list.map((e) => e.toString()).toList();
     final recordings = <RecordingMeta>[];
 
-    for (final raw in list) {
+    for (final raw in rawList) {
       try {
         final json = jsonDecode(raw) as Map<String, dynamic>;
         final meta = RecordingMeta.fromJson(json);
@@ -161,9 +131,9 @@ class RecordingService {
       final file = File(path);
       if (await file.exists()) await file.delete();
 
-      final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList(_metaKey) ?? [];
-      list.removeWhere((raw) {
+      final list = await AppStorage.instance.getValue<List<dynamic>>(_metaKey, []);
+      final filtered = list.map((e) => e.toString()).toList();
+      filtered.removeWhere((raw) {
         try {
           final json = jsonDecode(raw) as Map<String, dynamic>;
           return json['path'] == path;
@@ -171,7 +141,7 @@ class RecordingService {
           return false;
         }
       });
-      await prefs.setStringList(_metaKey, list);
+      await AppStorage.instance.putValue(_metaKey, filtered);
     } catch (e) {
       debugPrint("Delete recording error: $e");
     }

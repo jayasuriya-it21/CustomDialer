@@ -1,27 +1,56 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'theme/theme_provider.dart';
-import 'screens/favourites_screen.dart';
-import 'screens/recents_screen.dart';
-import 'screens/contacts_screen.dart';
-import 'screens/dialpad_screen.dart';
-import 'screens/search_screen.dart';
-import 'screens/settings_screen.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'config/app_router.dart';
+import 'core/constants/app_constants.dart';
+import 'core/di/service_locator.dart';
+import 'core/storage/app_storage.dart';
 import 'services/call_service.dart';
-import 'services/contact_service.dart';
-import 'services/favorites_service.dart';
+import 'theme/theme_provider.dart';
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+  setupServiceLocator();
+
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
+
   runApp(const DialerApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_bootstrapApp());
+  });
+}
+
+Future<void> _bootstrapApp() async {
+  // Keep launch path minimal: only start native call events.
+  getIt<CallService>().listenToCallEvents();
+
+  // Ask only essential permissions after first frame without blocking startup.
+  unawaited(_requestEssentialPermissions());
+
+  // Optional delayed storage warm-up for later reads.
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+  await AppStorage.instance.ensureReady();
+}
+
+Future<void> _requestEssentialPermissions() async {
+  await Future<void>.delayed(const Duration(milliseconds: 900));
+
+  final permissions = <Permission>[Permission.phone, Permission.contacts, Permission.microphone];
+
+  final toRequest = <Permission>[];
+  for (final permission in permissions) {
+    final status = await permission.status;
+    if (!status.isGranted) {
+      toRequest.add(permission);
+    }
+  }
+
+  if (toRequest.isNotEmpty) {
+    await toRequest.request();
+  }
 }
 
 class DialerApp extends StatefulWidget {
@@ -32,7 +61,7 @@ class DialerApp extends StatefulWidget {
 }
 
 class _DialerAppState extends State<DialerApp> {
-  final ThemeProvider _theme = ThemeProvider();
+  final ThemeProvider _theme = getIt<ThemeProvider>();
 
   @override
   void initState() {
@@ -54,191 +83,15 @@ class _DialerAppState extends State<DialerApp> {
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
-        return MaterialApp(
-          navigatorKey: navigatorKey,
-          title: 'Phone',
+        return MaterialApp.router(
+          title: AppConstants.appTitle,
           debugShowCheckedModeBanner: false,
-          theme: _theme.buildLightTheme(dynamicScheme: lightDynamic).copyWith(
-            pageTransitionsTheme: const PageTransitionsTheme(
-              builders: {
-                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-              },
-            ),
-          ),
-          darkTheme: _theme.buildDarkTheme(dynamicScheme: darkDynamic).copyWith(
-            pageTransitionsTheme: const PageTransitionsTheme(
-              builders: {
-                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-              },
-            ),
-          ),
+          theme: _theme.buildLightTheme(dynamicScheme: lightDynamic).copyWith(pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()})),
+          darkTheme: _theme.buildDarkTheme(dynamicScheme: darkDynamic).copyWith(pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()})),
           themeMode: _theme.themeMode,
-          home: const HomeScreen(),
+          routerConfig: appRouter,
         );
       },
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 1; // Start on Recents
-  final CallService _callService = CallService();
-  final ContactService _contactService = ContactService();
-  final FavoritesService _favoritesService = FavoritesService();
-
-  @override
-  void initState() {
-    super.initState();
-    // Defer heavy init to after first frame to reduce jank
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initApp());
-  }
-
-  Future<void> _initApp() async {
-    // Request permissions
-    await [
-      Permission.phone,
-      Permission.contacts,
-      Permission.microphone,
-      Permission.storage,
-    ].request();
-
-    // Pre-cache contacts and favorites in parallel (non-blocking)
-    _contactService.preload();
-    _favoritesService.load();
-
-    _callService.listenToCallEvents();
-    _callService.requestDefaultDialer();
-  }
-
-  void _openDialpad() {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const DialpadScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 280),
-        reverseTransitionDuration: const Duration(milliseconds: 220),
-      ),
-    );
-  }
-
-  void _openSearch() {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const SearchScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 200),
-      ),
-    );
-  }
-
-  void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: cs.brightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
-        systemNavigationBarColor: cs.surfaceContainerLow,
-      ),
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                child: Hero(
-                  tag: 'search_bar_hero',
-                  child: SearchBar(
-                    hintText: 'Search contacts & places',
-                    leading: const Icon(Icons.search_rounded),
-                    trailing: [
-                      GestureDetector(
-                        onTap: _openSettings,
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: cs.primary,
-                          child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
-                        ),
-                      ),
-                      const SizedBox(width: 8)
-                    ],
-                    elevation: const WidgetStatePropertyAll(0),
-                    backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
-                    onTap: _openSearch,
-                  ),
-                ),
-              ),
-
-              // Body
-              Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: const [
-                    RepaintBoundary(child: FavouritesScreen()),
-                    RepaintBoundary(child: RecentsScreen()),
-                    RepaintBoundary(child: ContactsScreen()),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.star_outline_rounded),
-              selectedIcon: Icon(Icons.star_rounded),
-              label: 'Favourites',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.access_time_rounded),
-              selectedIcon: Icon(Icons.access_time_filled_rounded),
-              label: 'Recents',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded),
-              label: 'Contacts',
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _openDialpad,
-          child: const Icon(Icons.dialpad_rounded, size: 26),
-        ),
-      ),
     );
   }
 }
