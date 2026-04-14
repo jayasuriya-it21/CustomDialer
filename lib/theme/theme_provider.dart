@@ -51,7 +51,7 @@ class ThemeProvider extends ChangeNotifier {
     _seedColor = color;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('seedColor', color.value);
+    await prefs.setInt('seedColor', color.toARGB32());
   }
 
   Future<void> setUseDynamicColor(bool value) async {
@@ -62,66 +62,40 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ThemeData buildLightTheme() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seedColor,
-      brightness: Brightness.light,
-    );
+    final scheme = ColorScheme.fromSeed(seedColor: _seedColor, brightness: Brightness.light);
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
-        indicatorColor: scheme.primaryContainer,
-        height: 64,
-      ),
+      navigationBarTheme: NavigationBarThemeData(backgroundColor: scheme.surfaceContainerLow, indicatorColor: scheme.primaryContainer, height: 64),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: scheme.surfaceContainerLowest,
       ),
-      listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      ),
-      dividerTheme: DividerThemeData(color: scheme.outlineVariant.withOpacity(0.3)),
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        },
-      ),
+      listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2)),
+      dividerTheme: DividerThemeData(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()}),
     );
   }
 
   ThemeData buildDarkTheme() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _seedColor,
-      brightness: Brightness.dark,
-    );
+    final scheme = ColorScheme.fromSeed(seedColor: _seedColor, brightness: Brightness.dark);
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
-        indicatorColor: scheme.primaryContainer,
-        height: 64,
-      ),
+      navigationBarTheme: NavigationBarThemeData(backgroundColor: scheme.surfaceContainerLow, indicatorColor: scheme.primaryContainer, height: 64),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: scheme.surfaceContainerHighest,
       ),
-      listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      ),
-      dividerTheme: DividerThemeData(color: scheme.outlineVariant.withOpacity(0.3)),
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        },
-      ),
+      listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2)),
+      dividerTheme: DividerThemeData(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()}),
     );
   }
 }

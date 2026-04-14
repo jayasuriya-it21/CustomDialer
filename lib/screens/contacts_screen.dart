@@ -11,8 +11,7 @@ class ContactsScreen extends StatefulWidget {
   State<ContactsScreen> createState() => _ContactsScreenState();
 }
 
-class _ContactsScreenState extends State<ContactsScreen>
-    with AutomaticKeepAliveClientMixin {
+class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAliveClientMixin {
   final ContactService _contactService = ContactService();
   final CallService _callService = CallService();
   List<Map<String, dynamic>> _contacts = [];
@@ -79,11 +78,9 @@ class _ContactsScreenState extends State<ContactsScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.people_outline_rounded, size: 64,
-                color: cs.onSurfaceVariant.withOpacity(0.25)),
+            Icon(Icons.people_outline_rounded, size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
-            Text('No contacts',
-                style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
+            Text('No contacts', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
           ],
         ),
       );
@@ -95,8 +92,7 @@ class _ContactsScreenState extends State<ContactsScreen>
         await _loadContacts();
       },
       child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics()),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.only(top: 4),
         itemCount: _items.length,
         itemExtent: null,
@@ -105,11 +101,10 @@ class _ContactsScreenState extends State<ContactsScreen>
           if (item.isHeader) {
             return Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(item.letter!,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: cs.primary)),
+              child: Text(
+                item.letter!,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary),
+              ),
             );
           }
           final c = item.contact!;
@@ -117,24 +112,21 @@ class _ContactsScreenState extends State<ContactsScreen>
           final number = (c['number'] as String?) ?? '';
 
           return ListTile(
-            leading: ContactAvatar(
-              name: name,
-              heroTag: 'contact_avatar_$name',
+            leading: ContactAvatar(name: name, heroTag: 'contact_avatar_$name'),
+            title: Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            title: Text(name,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 15),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            subtitle: Text(number,
-                style:
-                    TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+            subtitle: Text(number, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
             onTap: () {
               Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) =>
-                          ContactDetailScreen(name: name, number: number)));
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ContactDetailScreen(name: name, number: number),
+                ),
+              );
             },
             trailing: IconButton(
               icon: Icon(Icons.call_rounded, size: 20, color: cs.primary),

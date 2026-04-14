@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/call_service.dart';
@@ -9,18 +8,13 @@ class InCallScreen extends StatefulWidget {
   final String callerName;
   final bool isIncoming;
 
-  const InCallScreen({
-    super.key,
-    required this.callerName,
-    this.isIncoming = false,
-  });
+  const InCallScreen({super.key, required this.callerName, this.isIncoming = false});
 
   @override
   State<InCallScreen> createState() => _InCallScreenState();
 }
 
-class _InCallScreenState extends State<InCallScreen>
-    with TickerProviderStateMixin {
+class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMixin {
   final CallService _callService = CallService();
   final RecordingService _recordingService = RecordingService();
 
@@ -43,15 +37,11 @@ class _InCallScreenState extends State<InCallScreen>
   void initState() {
     super.initState();
 
-    _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _fadeCtrl.forward();
 
-    _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1600))
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.9, end: 1.06).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.9, end: 1.06).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _callStatus = widget.isIncoming ? '' : 'Calling...';
 
@@ -103,8 +93,7 @@ class _InCallScreenState extends State<InCallScreen>
   }
 
   Future<void> _tryAutoRecord() async {
-    if (await _recordingService.autoRecordEnabled &&
-        !_recordingService.isRecording) {
+    if (await _recordingService.autoRecordEnabled && !_recordingService.isRecording) {
       await _recordingService.startRecording(contactName: widget.callerName);
       if (!_isSpeaker) {
         _isSpeaker = true;
@@ -189,16 +178,16 @@ class _InCallScreenState extends State<InCallScreen>
       if (_recordingService.isRecording) {
         final path = await _recordingService.stopRecording();
         if (path != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('Recording saved'),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Recording saved'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
         }
       } else {
-        final path = await _recordingService.startRecording(
-            contactName: widget.callerName);
+        final path = await _recordingService.startRecording(contactName: widget.callerName);
         if (path != null && !_isSpeaker) {
           setState(() => _isSpeaker = true);
           await _callService.setAudioRoute(1);
@@ -222,16 +211,7 @@ class _InCallScreenState extends State<InCallScreen>
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF0F0F0F),
-              Color(0xFF0A0A0A),
-            ],
-            stops: [0.0, 0.5, 1.0],
-          ),
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1A1A2E), Color(0xFF0F0F0F), Color(0xFF0A0A0A)], stops: [0.0, 0.5, 1.0]),
         ),
         child: FadeTransition(
           opacity: _fadeCtrl,
@@ -241,15 +221,7 @@ class _InCallScreenState extends State<InCallScreen>
                 const SizedBox(height: 48),
                 _buildCallerInfo(isRecording),
                 const Spacer(),
-                if (_isCallAnswered)
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    child: _showDialpad
-                        ? _buildInCallDialpad()
-                        : _buildActionGrid(isRecording),
-                  ),
+                if (_isCallAnswered) AnimatedSwitcher(duration: const Duration(milliseconds: 250), switchInCurve: Curves.easeOut, switchOutCurve: Curves.easeIn, child: _showDialpad ? _buildInCallDialpad() : _buildActionGrid(isRecording)),
                 const SizedBox(height: 36),
                 _buildEndCallButton(),
                 const SizedBox(height: 52),
@@ -266,21 +238,12 @@ class _InCallScreenState extends State<InCallScreen>
       children: [
         // Avatar with gradient ring
         ScaleTransition(
-          scale: !_isCallAnswered
-              ? _pulseAnim
-              : const AlwaysStoppedAnimation(1.0),
+          scale: !_isCallAnswered ? _pulseAnim : const AlwaysStoppedAnimation(1.0),
           child: Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF4285F4).withOpacity(0.4),
-                  const Color(0xFFAB47BC).withOpacity(0.4),
-                ],
-              ),
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF4285F4).withValues(alpha: 0.4), const Color(0xFFAB47BC).withValues(alpha: 0.4)]),
             ),
             child: Container(
               width: 110,
@@ -288,23 +251,12 @@ class _InCallScreenState extends State<InCallScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF1A1A2E),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF2D2D44),
-                    const Color(0xFF1A1A2E),
-                  ],
-                ),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF2D2D44), const Color(0xFF1A1A2E)]),
               ),
               child: Center(
                 child: Text(
                   _getInitials(widget.callerName),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 38,
-                    fontWeight: FontWeight.w300,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 38, fontWeight: FontWeight.w300),
                 ),
               ),
             ),
@@ -317,11 +269,7 @@ class _InCallScreenState extends State<InCallScreen>
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
             widget.callerName,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 0.5),
+            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w300, letterSpacing: 0.5),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -337,27 +285,19 @@ class _InCallScreenState extends State<InCallScreen>
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
                 duration: const Duration(milliseconds: 600),
-                builder: (_, v, __) => Opacity(
+                builder: (_, v, _) => Opacity(
                   opacity: v,
                   child: Container(
                     width: 8,
                     height: 8,
                     margin: const EdgeInsets.only(right: 8),
-                    decoration: const BoxDecoration(
-                        shape: BoxShape.circle, color: Colors.red),
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.red),
                   ),
                 ),
               ),
             Text(
-              _isCallAnswered && _callStatus.isEmpty
-                  ? _formatTime()
-                  : _callStatus,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.45),
-                fontSize: 15,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                letterSpacing: 1.0,
-              ),
+              _isCallAnswered && _callStatus.isEmpty ? _formatTime() : _callStatus,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 15, fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: 1.0),
             ),
           ],
         ),
@@ -383,45 +323,18 @@ class _InCallScreenState extends State<InCallScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _actionBtn(
-                  icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                  label: 'Mute',
-                  isActive: _isMuted,
-                  onTap: _toggleMute),
-              _actionBtn(
-                  icon: Icons.dialpad_rounded,
-                  label: 'Keypad',
-                  onTap: () => setState(() => _showDialpad = true)),
-              _actionBtn(
-                  icon: _isSpeaker
-                      ? Icons.volume_up_rounded
-                      : Icons.volume_down_rounded,
-                  label: 'Speaker',
-                  isActive: _isSpeaker,
-                  onTap: _toggleSpeaker),
+              _actionBtn(icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded, label: 'Mute', isActive: _isMuted, onTap: _toggleMute),
+              _actionBtn(icon: Icons.dialpad_rounded, label: 'Keypad', onTap: () => setState(() => _showDialpad = true)),
+              _actionBtn(icon: _isSpeaker ? Icons.volume_up_rounded : Icons.volume_down_rounded, label: 'Speaker', isActive: _isSpeaker, onTap: _toggleSpeaker),
             ],
           ),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _actionBtn(
-                  icon: Icons.add_call, label: 'Add call', onTap: () {}),
-              _actionBtn(
-                  icon: _isOnHold
-                      ? Icons.play_arrow_rounded
-                      : Icons.pause_rounded,
-                  label: _isOnHold ? 'Resume' : 'Hold',
-                  isActive: _isOnHold,
-                  onTap: _toggleHold),
-              _actionBtn(
-                  icon: isRecording
-                      ? Icons.stop_circle_rounded
-                      : Icons.fiber_manual_record_rounded,
-                  label: isRecording ? 'Stop' : 'Record',
-                  isActive: isRecording,
-                  activeColor: Colors.red,
-                  onTap: _toggleRecording),
+              _actionBtn(icon: Icons.add_call, label: 'Add call', onTap: () {}),
+              _actionBtn(icon: _isOnHold ? Icons.play_arrow_rounded : Icons.pause_rounded, label: _isOnHold ? 'Resume' : 'Hold', isActive: _isOnHold, onTap: _toggleHold),
+              _actionBtn(icon: isRecording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded, label: isRecording ? 'Stop' : 'Record', isActive: isRecording, activeColor: Colors.red, onTap: _toggleRecording),
             ],
           ),
         ],
@@ -429,13 +342,7 @@ class _InCallScreenState extends State<InCallScreen>
     );
   }
 
-  Widget _actionBtn({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isActive = false,
-    Color? activeColor,
-  }) {
+  Widget _actionBtn({required IconData icon, required String label, required VoidCallback onTap, bool isActive = false, Color? activeColor}) {
     final bgActive = activeColor ?? Colors.white;
     final fgActive = activeColor != null ? Colors.white : Colors.black;
 
@@ -453,25 +360,17 @@ class _InCallScreenState extends State<InCallScreen>
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isActive ? bgActive : Colors.white.withOpacity(0.08),
-                boxShadow: isActive
-                    ? [
-                        BoxShadow(
-                            color: (activeColor ?? Colors.white)
-                                .withOpacity(0.2),
-                            blurRadius: 12,
-                            spreadRadius: 1)
-                      ]
-                    : null,
+                color: isActive ? bgActive : Colors.white.withValues(alpha: 0.08),
+                boxShadow: isActive ? [BoxShadow(color: (activeColor ?? Colors.white).withValues(alpha: 0.2), blurRadius: 12, spreadRadius: 1)] : null,
               ),
-              child: Icon(icon,
-                  color: isActive ? fgActive : Colors.white, size: 24),
+              child: Icon(icon, color: isActive ? fgActive : Colors.white, size: 24),
             ),
             const SizedBox(height: 10),
-            Text(label,
-                style: TextStyle(
-                    color: Colors.white.withOpacity(0.6), fontSize: 12),
-                textAlign: TextAlign.center),
+            Text(
+              label,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -494,12 +393,14 @@ class _InCallScreenState extends State<InCallScreen>
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 36),
-          child: Column(children: [
-            _dtmfRow(['1', '2', '3']),
-            _dtmfRow(['4', '5', '6']),
-            _dtmfRow(['7', '8', '9']),
-            _dtmfRow(['*', '0', '#']),
-          ]),
+          child: Column(
+            children: [
+              _dtmfRow(['1', '2', '3']),
+              _dtmfRow(['4', '5', '6']),
+              _dtmfRow(['7', '8', '9']),
+              _dtmfRow(['*', '0', '#']),
+            ],
+          ),
         ),
       ],
     );
@@ -509,24 +410,26 @@ class _InCallScreenState extends State<InCallScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: digits
-          .map((d) => Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _onDtmf(d),
-                  borderRadius: BorderRadius.circular(32),
-                  splashColor: Colors.white10,
-                  child: SizedBox(
-                    width: 68, height: 54,
-                    child: Center(
-                      child: Text(d,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w300)),
+          .map(
+            (d) => Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _onDtmf(d),
+                borderRadius: BorderRadius.circular(32),
+                splashColor: Colors.white10,
+                child: SizedBox(
+                  width: 68,
+                  height: 54,
+                  child: Center(
+                    child: Text(
+                      d,
+                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w300),
                     ),
                   ),
                 ),
-              ))
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -535,13 +438,7 @@ class _InCallScreenState extends State<InCallScreen>
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withOpacity(0.35),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2)],
       ),
       child: Material(
         color: const Color(0xFFEA4335),
@@ -553,9 +450,7 @@ class _InCallScreenState extends State<InCallScreen>
           child: const SizedBox(
             width: 76,
             height: 76,
-            child: Center(
-                child: Icon(Icons.call_end_rounded,
-                    color: Colors.white, size: 34)),
+            child: Center(child: Icon(Icons.call_end_rounded, color: Colors.white, size: 34)),
           ),
         ),
       ),

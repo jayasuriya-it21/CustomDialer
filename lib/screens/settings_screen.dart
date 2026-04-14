@@ -46,11 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: cs.surface,
-        surfaceTintColor: Colors.transparent,
-      ),
+      appBar: AppBar(title: const Text('Settings'), backgroundColor: cs.surface, surfaceTintColor: Colors.transparent),
       body: ListView(
         children: [
           // ---- Calling ----
@@ -118,16 +114,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Recordings'),
             subtitle: const Text('View and manage call recordings'),
             trailing: Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const RecordingsScreen())),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RecordingsScreen())),
           ),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(
-              'Recording uses the microphone. On Android 10+, recording may not capture the other party\'s voice on all devices.',
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant.withOpacity(0.6)),
-            ),
+            child: Text('Recording uses the microphone. On Android 10+, recording may not capture the other party\'s voice on all devices.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
           ),
 
           const Divider(indent: 16, endIndent: 16),
@@ -147,9 +139,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Accent colour'),
             subtitle: const Text('Choose your theme colour'),
             trailing: Container(
-              width: 28, height: 28,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: _theme.seedColor),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: _theme.seedColor),
             ),
             onTap: () => _showColorPicker(),
           ),
@@ -175,20 +167,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(title,
-          style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: cs.primary,
-              letterSpacing: 0.2)),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary, letterSpacing: 0.2),
+      ),
     );
   }
 
   String _themeModeLabel(ThemeMode mode) {
     switch (mode) {
-      case ThemeMode.system: return 'System default';
-      case ThemeMode.light: return 'Light';
-      case ThemeMode.dark: return 'Dark';
+      case ThemeMode.system:
+        return 'System default';
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
     }
   }
 
@@ -197,30 +190,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(
-                color: cs.outlineVariant,
-                borderRadius: BorderRadius.circular(2)))),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
             const SizedBox(height: 20),
-            const Text('SIM Cards',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const Text('SIM Cards', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
-            ..._sims.map((sim) => ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: cs.primaryContainer,
-                    child: Text('${(sim['slot'] as int? ?? 0) + 1}',
-                        style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w600)),
+            ..._sims.map(
+              (sim) => ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: cs.primaryContainer,
+                  child: Text(
+                    '${(sim['slot'] as int? ?? 0) + 1}',
+                    style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w600),
                   ),
-                  title: Text(sim['carrier'] as String? ?? 'SIM'),
-                  subtitle: Text(sim['number'] as String? ?? 'No number'),
-                )),
+                ),
+                title: Text(sim['carrier'] as String? ?? 'SIM'),
+                subtitle: Text(sim['number'] as String? ?? 'No number'),
+              ),
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -233,30 +232,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(
-                color: cs.outlineVariant,
-                borderRadius: BorderRadius.circular(2)))),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
             const SizedBox(height: 20),
-            const Text('Theme mode',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const Text('Theme mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
-            ...ThemeMode.values.map((mode) => RadioListTile<ThemeMode>(
-                  value: mode,
-                  groupValue: _theme.themeMode,
-                  title: Text(_themeModeLabel(mode)),
-                  onChanged: (v) {
-                    if (v != null) _theme.setThemeMode(v);
-                    Navigator.pop(context);
-                  },
-                )),
+            ...ThemeMode.values.map((mode) {
+              final isSelected = _theme.themeMode == mode;
+              return ListTile(
+                title: Text(_themeModeLabel(mode)),
+                trailing: isSelected ? Icon(Icons.check_rounded, color: cs.primary) : null,
+                onTap: () {
+                  _theme.setThemeMode(mode);
+                  Navigator.pop(context);
+                },
+              );
+            }),
             const SizedBox(height: 8),
           ],
         ),
@@ -269,26 +272,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(
-                color: cs.outlineVariant,
-                borderRadius: BorderRadius.circular(2)))),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
             const SizedBox(height: 20),
-            const Text('Accent colour',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const Text('Accent colour', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 20),
             Wrap(
               spacing: 16,
               runSpacing: 16,
               children: ThemeProvider.presetColors.map((color) {
-                final isSelected = _theme.seedColor.value == color.value;
+                final isSelected = _theme.seedColor.toARGB32() == color.toARGB32();
                 return GestureDetector(
                   onTap: () {
                     _theme.setSeedColor(color);
@@ -296,22 +301,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 48, height: 48,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: color,
-                      border: isSelected
-                          ? Border.all(color: cs.onSurface, width: 3)
-                          : null,
-                      boxShadow: isSelected
-                          ? [BoxShadow(color: color.withOpacity(0.4),
-                              blurRadius: 8, spreadRadius: 1)]
-                          : null,
+                      border: isSelected ? Border.all(color: cs.onSurface, width: 3) : null,
+                      boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 1)] : null,
                     ),
-                    child: isSelected
-                        ? const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 22)
-                        : null,
+                    child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 22) : null,
                   ),
                 );
               }).toList(),

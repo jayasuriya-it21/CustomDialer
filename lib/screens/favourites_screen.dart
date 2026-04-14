@@ -12,8 +12,7 @@ class FavouritesScreen extends StatefulWidget {
   State<FavouritesScreen> createState() => _FavouritesScreenState();
 }
 
-class _FavouritesScreenState extends State<FavouritesScreen>
-    with AutomaticKeepAliveClientMixin {
+class _FavouritesScreenState extends State<FavouritesScreen> with AutomaticKeepAliveClientMixin {
   final ContactService _contactService = ContactService();
   final FavoritesService _favoritesService = FavoritesService();
   final CallService _callService = CallService();
@@ -59,16 +58,11 @@ class _FavouritesScreenState extends State<FavouritesScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.star_outline_rounded, size: 64,
-                color: cs.onSurfaceVariant.withOpacity(0.25)),
+            Icon(Icons.star_outline_rounded, size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
-            Text('No favourites',
-                style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
+            Text('No favourites', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
             const SizedBox(height: 8),
-            Text('Star contacts to add them here',
-                style: TextStyle(
-                    fontSize: 14,
-                    color: cs.onSurfaceVariant.withOpacity(0.6))),
+            Text('Star contacts to add them here', style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
           ],
         ),
       );
@@ -77,15 +71,9 @@ class _FavouritesScreenState extends State<FavouritesScreen>
     return RefreshIndicator(
       onRefresh: _loadFavorites,
       child: GridView.builder(
-        physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics()),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.85,
-        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.85),
         itemCount: _favorites.length,
         itemBuilder: (_, i) {
           final c = _favorites[i];
@@ -95,10 +83,11 @@ class _FavouritesScreenState extends State<FavouritesScreen>
           return GestureDetector(
             onTap: () {
               Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) =>
-                          ContactDetailScreen(name: name, number: number)));
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ContactDetailScreen(name: name, number: number),
+                ),
+              );
             },
             child: Column(
               children: [
@@ -110,29 +99,25 @@ class _FavouritesScreenState extends State<FavouritesScreen>
                       bottom: 0,
                       child: Container(
                         padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: cs.surface,
-                        ),
-                        child: Icon(Icons.star_rounded,
-                            size: 14, color: Colors.amber),
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: cs.surface),
+                        child: Icon(Icons.star_rounded, size: 14, color: Colors.amber),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center),
+                Text(
+                  name,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
                 GestureDetector(
                   onTap: () => _callService.makeCall(number),
                   child: Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Icon(Icons.call_rounded,
-                        size: 18, color: cs.primary),
+                    child: Icon(Icons.call_rounded, size: 18, color: cs.primary),
                   ),
                 ),
               ],

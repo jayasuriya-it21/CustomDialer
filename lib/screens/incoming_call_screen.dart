@@ -9,18 +9,13 @@ class IncomingCallScreen extends StatefulWidget {
   final String callerName;
   final String callerNumber;
 
-  const IncomingCallScreen({
-    super.key,
-    required this.callerName,
-    required this.callerNumber,
-  });
+  const IncomingCallScreen({super.key, required this.callerName, required this.callerNumber});
 
   @override
   State<IncomingCallScreen> createState() => _IncomingCallScreenState();
 }
 
-class _IncomingCallScreenState extends State<IncomingCallScreen>
-    with TickerProviderStateMixin {
+class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProviderStateMixin {
   final CallService _callService = CallService();
   final ContactService _contactService = ContactService();
 
@@ -35,22 +30,15 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     super.initState();
 
     // Pulsing avatar
-    _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000))
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.08).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     // Expanding ring
-    _ringCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2500))
-      ..repeat();
-    _ringAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _ringCtrl, curve: Curves.easeOut));
+    _ringCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))..repeat();
+    _ringAnim = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _ringCtrl, curve: Curves.easeOut));
 
     // Fade in
-    _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _fadeCtrl.forward();
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -83,10 +71,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
-              InCallScreen(callerName: widget.callerName, isIncoming: true),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
+          pageBuilder: (_, _, _) => InCallScreen(callerName: widget.callerName, isIncoming: true),
+          transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 200),
         ),
       );
@@ -120,24 +106,19 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                     // Expanding ring animation
                     AnimatedBuilder(
                       animation: _ringAnim,
-                      builder: (_, __) => Container(
+                      builder: (_, _) => Container(
                         width: 120 + (_ringAnim.value * 40),
                         height: 120 + (_ringAnim.value * 40),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF34A853)
-                                .withOpacity(0.3 * (1 - _ringAnim.value)),
-                            width: 2,
-                          ),
+                          border: Border.all(color: const Color(0xFF34A853).withValues(alpha: 0.3 * (1 - _ringAnim.value)), width: 2),
                         ),
                       ),
                     ),
                     // Avatar
                     ScaleTransition(
                       scale: _pulseAnim,
-                      child: ContactAvatar(
-                          name: widget.callerName, radius: 52),
+                      child: ContactAvatar(name: widget.callerName, radius: 52),
                     ),
                   ],
                 ),
@@ -150,12 +131,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
                   widget.callerName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 0.5,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w300, letterSpacing: 0.5),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -164,30 +140,14 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               const SizedBox(height: 8),
 
               // Number (if different)
-              if (widget.callerNumber != widget.callerName)
-                Text(
-                  widget.callerNumber,
-                  style: TextStyle(
-                      color: Colors.white.withOpacity(0.45), fontSize: 16),
-                ),
+              if (widget.callerNumber != widget.callerName) Text(widget.callerNumber, style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 16)),
               const SizedBox(height: 12),
 
               // Label
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: Colors.white.withOpacity(0.06),
-                ),
-                child: Text(
-                  'Incoming call',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
-                    fontSize: 13,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withValues(alpha: 0.06)),
+                child: Text('Incoming call', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, letterSpacing: 0.8)),
               ),
 
               const Spacer(flex: 3),
@@ -196,13 +156,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               Padding(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: TextButton.icon(
-                  onPressed: () =>
-                      _contactService.openSms(widget.callerNumber),
-                  icon: Icon(Icons.message_outlined,
-                      color: Colors.white.withOpacity(0.5), size: 18),
-                  label: Text('Reply',
-                      style: TextStyle(
-                          color: Colors.white.withOpacity(0.5), fontSize: 14)),
+                  onPressed: () => _contactService.openSms(widget.callerNumber),
+                  icon: Icon(Icons.message_outlined, color: Colors.white.withValues(alpha: 0.5), size: 18),
+                  label: Text('Reply', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14)),
                 ),
               ),
 
@@ -212,18 +168,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _callActionButton(
-                      icon: Icons.call_end_rounded,
-                      color: const Color(0xFFEA4335),
-                      label: 'Decline',
-                      onTap: _decline,
-                    ),
-                    _callActionButton(
-                      icon: Icons.call_rounded,
-                      color: const Color(0xFF34A853),
-                      label: 'Answer',
-                      onTap: _answer,
-                    ),
+                    _callActionButton(icon: Icons.call_end_rounded, color: const Color(0xFFEA4335), label: 'Decline', onTap: _decline),
+                    _callActionButton(icon: Icons.call_rounded, color: const Color(0xFF34A853), label: 'Answer', onTap: _answer),
                   ],
                 ),
               ),
@@ -234,12 +180,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     );
   }
 
-  Widget _callActionButton({
-    required IconData icon,
-    required Color color,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _callActionButton({required IconData icon, required Color color, required String label, required VoidCallback onTap}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -247,7 +188,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
           color: color,
           shape: const CircleBorder(),
           elevation: 8,
-          shadowColor: color.withOpacity(0.5),
+          shadowColor: color.withValues(alpha: 0.5),
           child: InkWell(
             onTap: onTap,
             customBorder: const CircleBorder(),
@@ -260,11 +201,10 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
           ),
         ),
         const SizedBox(height: 14),
-        Text(label,
-            style: TextStyle(
-                color: Colors.white.withOpacity(0.55),
-                fontSize: 14,
-                fontWeight: FontWeight.w400)),
+        Text(
+          label,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 14, fontWeight: FontWeight.w400),
+        ),
       ],
     );
   }

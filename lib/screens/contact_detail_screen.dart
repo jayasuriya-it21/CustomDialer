@@ -39,7 +39,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
         _phoneNumbers = nums.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
       if (_phoneNumbers.isEmpty) {
-        _phoneNumbers = [{'number': widget.number, 'type': 'Mobile'}];
+        _phoneNumbers = [
+          {'number': widget.number, 'type': 'Mobile'},
+        ];
       }
 
       // Find contactId for favorites
@@ -75,16 +77,12 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             backgroundColor: cs.surfaceContainerLow,
             actions: [
               IconButton(
-                icon: Icon(
-                  _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: _isFavorite ? Colors.amber : cs.onSurfaceVariant,
-                ),
+                icon: Icon(_isFavorite ? Icons.star_rounded : Icons.star_outline_rounded, color: _isFavorite ? Colors.amber : cs.onSurfaceVariant),
                 onPressed: _toggleFavorite,
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(widget.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              title: Text(widget.name, style: const TextStyle(fontWeight: FontWeight.w600)),
               centerTitle: false,
             ),
           ),
@@ -92,11 +90,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 16),
-                ContactAvatar(
-                  name: widget.name,
-                  radius: 48,
-                  heroTag: 'contact_avatar_${widget.name}',
-                ),
+                ContactAvatar(name: widget.name, radius: 48, heroTag: 'contact_avatar_${widget.name}'),
                 const SizedBox(height: 16),
 
                 // Quick actions
@@ -105,23 +99,18 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _quickAction(Icons.call_rounded, 'Call',
-                          const Color(0xFF34A853),
-                          () => _callService.makeCall(widget.number)),
-                      _quickAction(Icons.message_rounded, 'Text', cs.primary,
-                          () => _contactService.openSms(widget.number)),
-                      _quickAction(Icons.videocam_rounded, 'Video', cs.primary,
-                          () => _contactService.openVideoCall(widget.number)),
-                      _quickAction(Icons.chat_rounded, 'WhatsApp',
-                          const Color(0xFF25D366), () async {
+                      _quickAction(Icons.call_rounded, 'Call', const Color(0xFF34A853), () => _callService.makeCall(widget.number)),
+                      _quickAction(Icons.message_rounded, 'Text', cs.primary, () => _contactService.openSms(widget.number)),
+                      _quickAction(Icons.videocam_rounded, 'Video', cs.primary, () => _contactService.openVideoCall(widget.number)),
+                      _quickAction(Icons.chat_rounded, 'WhatsApp', const Color(0xFF25D366), () async {
                         final success = await _contactService.openWhatsApp(widget.number);
-                        if (!success && mounted) {
+                        if (!success) {
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: const Text('WhatsApp is not installed'),
                               behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           );
                         }
@@ -138,19 +127,15 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Contact info',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: cs.primary)),
+                    child: Text(
+                      'Contact info',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary),
+                    ),
                   ),
                 ),
 
                 if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                  const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2))
                 else
                   ..._phoneNumbers.map((phone) {
                     final num = phone['number'] as String? ?? '';
@@ -158,20 +143,16 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                     return ListTile(
                       leading: Icon(Icons.call_rounded, color: cs.primary),
                       title: Text(num, style: const TextStyle(fontSize: 16)),
-                      subtitle: Text(type,
-                          style: TextStyle(
-                              fontSize: 13, color: cs.onSurfaceVariant)),
+                      subtitle: Text(type, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: Icon(Icons.call_rounded,
-                                color: cs.primary, size: 20),
+                            icon: Icon(Icons.call_rounded, color: cs.primary, size: 20),
                             onPressed: () => _callService.makeCall(num),
                           ),
                           IconButton(
-                            icon: Icon(Icons.message_rounded,
-                                color: cs.primary, size: 20),
+                            icon: Icon(Icons.message_rounded, color: cs.primary, size: 20),
                             onPressed: () => _contactService.openSms(num),
                           ),
                         ],
@@ -189,23 +170,18 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     );
   }
 
-  Widget _quickAction(
-      IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _quickAction(IconData icon, String label, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-                shape: BoxShape.circle, color: color.withOpacity(0.12)),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.12)),
             child: Icon(icon, color: color, size: 22),
           ),
           const SizedBox(height: 8),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );

@@ -115,8 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openDialpad() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const DialpadScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const DialpadScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(0, 1),
@@ -137,8 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openSearch() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const SearchScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => const SearchScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 200),

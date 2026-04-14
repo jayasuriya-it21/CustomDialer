@@ -20,7 +20,6 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Map<String, dynamic>> _allContacts = [];
   List<Map<String, dynamic>> _allLogs = [];
   List<Map<String, dynamic>> _results = [];
-  bool _loaded = false;
 
   @override
   void initState() {
@@ -47,7 +46,6 @@ class _SearchScreenState extends State<SearchScreen> {
     if (mounted) {
       setState(() {
         _allLogs = logs;
-        _loaded = true;
       });
     }
   }
@@ -118,11 +116,7 @@ class _SearchScreenState extends State<SearchScreen> {
               padding: const EdgeInsets.fromLTRB(8, 6, 16, 0),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => Navigator.pop(context),
-                    tooltip: 'Back',
-                  ),
+                  IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context), tooltip: 'Back'),
                   Expanded(
                     child: TextField(
                       controller: _controller,
@@ -132,8 +126,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         hintText: 'Search contacts & places',
                         hintStyle: TextStyle(color: cs.onSurfaceVariant),
                         border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -158,86 +151,57 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.search_rounded,
-                              size: 48,
-                              color: cs.onSurfaceVariant.withOpacity(0.2)),
+                          Icon(Icons.search_rounded, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.2)),
                           const SizedBox(height: 12),
-                          Text('Search by name or number',
-                              style: TextStyle(
-                                  color: cs.onSurfaceVariant.withOpacity(0.5))),
+                          Text('Search by name or number', style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
                         ],
                       ),
                     )
                   : _results.isEmpty
-                      ? Center(
-                          child: Column(
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.search_off_rounded, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.2)),
+                          const SizedBox(height: 12),
+                          Text('No results', style: TextStyle(color: cs.onSurfaceVariant)),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.only(top: 4),
+                      itemCount: _results.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
+                      itemBuilder: (_, i) {
+                        final r = _results[i];
+                        final name = (r['name'] as String?) ?? '';
+                        final number = (r['number'] as String?) ?? '';
+                        final displayName = name.isNotEmpty ? name : number;
+                        final isContact = r['source'] == 'contact';
+
+                        return ListTile(
+                          leading: ContactAvatar(name: displayName, heroTag: isContact ? 'search_avatar_$displayName' : null),
+                          title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          subtitle: name.isNotEmpty ? Text(number, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)) : null,
+                          trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.search_off_rounded,
-                                  size: 48,
-                                  color:
-                                      cs.onSurfaceVariant.withOpacity(0.2)),
-                              const SizedBox(height: 12),
-                              Text('No results',
-                                  style: TextStyle(
-                                      color: cs.onSurfaceVariant)),
+                              IconButton(
+                                icon: Icon(Icons.call_rounded, color: cs.primary, size: 20),
+                                tooltip: 'Call',
+                                onPressed: () => _callService.makeCall(number),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.message_rounded, color: cs.onSurfaceVariant, size: 20),
+                                tooltip: 'Message',
+                                onPressed: () => _contactService.openSms(number),
+                              ),
                             ],
                           ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.only(top: 4),
-                          itemCount: _results.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(height: 1, indent: 72),
-                          itemBuilder: (_, i) {
-                            final r = _results[i];
-                            final name = (r['name'] as String?) ?? '';
-                            final number = (r['number'] as String?) ?? '';
-                            final displayName =
-                                name.isNotEmpty ? name : number;
-                            final isContact = r['source'] == 'contact';
-
-                            return ListTile(
-                              leading: ContactAvatar(
-                                name: displayName,
-                                heroTag: isContact
-                                    ? 'search_avatar_$displayName'
-                                    : null,
-                              ),
-                              title: Text(displayName,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500)),
-                              subtitle: name.isNotEmpty
-                                  ? Text(number,
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: cs.onSurfaceVariant))
-                                  : null,
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.call_rounded,
-                                        color: cs.primary, size: 20),
-                                    tooltip: 'Call',
-                                    onPressed: () =>
-                                        _callService.makeCall(number),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.message_rounded,
-                                        color: cs.onSurfaceVariant,
-                                        size: 20),
-                                    tooltip: 'Message',
-                                    onPressed: () =>
-                                        _contactService.openSms(number),
-                                  ),
-                                ],
-                              ),
-                              onTap: () =>
-                                  _navigateToDetail(name, number),
-                            );
-                          },
-                        ),
+                          onTap: () => _navigateToDetail(name, number),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

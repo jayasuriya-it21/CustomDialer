@@ -187,11 +187,11 @@ class CallService {
       nav.push(
         PageRouteBuilder(
           opaque: true,
-          pageBuilder: (_, __, ___) => IncomingCallScreen(
+          pageBuilder: (_, _, _) => IncomingCallScreen(
             callerName: callerName,
             callerNumber: callerNumber,
           ),
-          transitionsBuilder: (_, animation, __, child) {
+          transitionsBuilder: (_, animation, _, child) {
             return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 150),
@@ -207,11 +207,11 @@ class CallService {
       nav.push(
         PageRouteBuilder(
           opaque: true,
-          pageBuilder: (_, __, ___) => InCallScreen(
+          pageBuilder: (_, _, _) => InCallScreen(
             callerName: callerName,
             isIncoming: isIncoming,
           ),
-          transitionsBuilder: (_, animation, __, child) {
+          transitionsBuilder: (_, animation, _, child) {
             return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 200),

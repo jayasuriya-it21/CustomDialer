@@ -87,10 +87,7 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
 
   Future<void> _shareRecording(int index) async {
     final meta = _recordings[index];
-    await Share.shareXFiles(
-      [XFile(meta.path)],
-      text: 'Call recording: ${meta.contactName}',
-    );
+    await Share.shareXFiles([XFile(meta.path)], text: 'Call recording: ${meta.contactName}');
   }
 
   String _formatDate(int ms) {
@@ -109,41 +106,30 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recordings'),
-        backgroundColor: cs.surface,
-        surfaceTintColor: Colors.transparent,
-      ),
+      appBar: AppBar(title: const Text('Recordings'), backgroundColor: cs.surface, surfaceTintColor: Colors.transparent),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : _recordings.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.mic_off_rounded, size: 64,
-                          color: cs.onSurfaceVariant.withOpacity(0.25)),
-                      const SizedBox(height: 16),
-                      Text('No recordings',
-                          style: TextStyle(
-                              fontSize: 16, color: cs.onSurfaceVariant)),
-                      const SizedBox(height: 8),
-                      Text('Call recordings will appear here',
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: cs.onSurfaceVariant.withOpacity(0.6))),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadRecordings,
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics()),
-                    itemCount: _recordings.length,
-                    itemBuilder: (_, i) => _buildRecordingItem(i),
-                  ),
-                ),
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mic_off_rounded, size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.25)),
+                  const SizedBox(height: 16),
+                  Text('No recordings', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 8),
+                  Text('Call recordings will appear here', style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadRecordings,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                itemCount: _recordings.length,
+                itemBuilder: (_, i) => _buildRecordingItem(i),
+              ),
+            ),
     );
   }
 
@@ -151,48 +137,34 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
     final meta = _recordings[index];
     final cs = Theme.of(context).colorScheme;
     final isCurrentlyPlaying = _playingIndex == index;
-    final displayName = meta.contactName.isNotEmpty
-        ? meta.contactName
-        : (meta.number.isNotEmpty ? meta.number : 'Unknown');
+    final displayName = meta.contactName.isNotEmpty ? meta.contactName : (meta.number.isNotEmpty ? meta.number : 'Unknown');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       elevation: 0,
-      color: isCurrentlyPlaying
-          ? cs.primaryContainer.withOpacity(0.3)
-          : cs.surfaceContainerHigh,
+      color: isCurrentlyPlaying ? cs.primaryContainer.withValues(alpha: 0.3) : cs.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: CircleAvatar(
-          backgroundColor:
-              isCurrentlyPlaying && _isPlaying ? cs.primary : cs.primaryContainer,
-          child: Icon(
-            isCurrentlyPlaying && _isPlaying
-                ? Icons.pause_rounded
-                : Icons.play_arrow_rounded,
-            color: isCurrentlyPlaying && _isPlaying
-                ? cs.onPrimary
-                : cs.onPrimaryContainer,
-            size: 22,
-          ),
+          backgroundColor: isCurrentlyPlaying && _isPlaying ? cs.primary : cs.primaryContainer,
+          child: Icon(isCurrentlyPlaying && _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: isCurrentlyPlaying && _isPlaying ? cs.onPrimary : cs.onPrimaryContainer, size: 22),
         ),
-        title: Text(displayName,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
+        title: Text(
+          displayName,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         subtitle: Row(
           children: [
-            Text(_formatDate(meta.dateMs),
-                style:
-                    TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            Text(_formatDate(meta.dateMs), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
             if (meta.durationSeconds > 0) ...[
               Text(' · ', style: TextStyle(color: cs.onSurfaceVariant)),
-              Text(_formatDuration(meta.durationSeconds),
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurfaceVariant,
-                      fontFeatures: const [FontFeature.tabularFigures()])),
+              Text(
+                _formatDuration(meta.durationSeconds),
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant, fontFeatures: const [FontFeature.tabularFigures()]),
+              ),
             ],
           ],
         ),
@@ -205,8 +177,7 @@ class _RecordingsScreenState extends State<RecordingsScreen> {
               onPressed: () => _shareRecording(index),
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline_rounded,
-                  size: 20, color: cs.error),
+              icon: Icon(Icons.delete_outline_rounded, size: 20, color: cs.error),
               visualDensity: VisualDensity.compact,
               onPressed: () => _deleteRecording(index),
             ),
