@@ -2,35 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'theme/theme_provider.dart';
-import 'screens/favourites_screen.dart';
 import 'screens/recents_screen.dart';
 import 'screens/contacts_screen.dart';
 import 'screens/dialpad_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/call_service.dart';
-import 'services/contact_service.dart';
-import 'services/favorites_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
-  runApp(const DialerApp());
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
+  runApp(const GoogleDialerApp());
 }
 
-class DialerApp extends StatefulWidget {
-  const DialerApp({super.key});
+class GoogleDialerApp extends StatefulWidget {
+  const GoogleDialerApp({super.key});
 
   @override
-  State<DialerApp> createState() => _DialerAppState();
+  State<GoogleDialerApp> createState() => _GoogleDialerAppState();
 }
 
-class _DialerAppState extends State<DialerApp> {
+class _GoogleDialerAppState extends State<GoogleDialerApp> {
   final ThemeProvider _theme = ThemeProvider();
 
   @override
@@ -51,27 +45,7 @@ class _DialerAppState extends State<DialerApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'Phone',
-      debugShowCheckedModeBanner: false,
-      theme: _theme.buildLightTheme().copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      darkTheme: _theme.buildDarkTheme().copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      themeMode: _theme.themeMode,
-      home: const HomeScreen(),
-    );
+    return MaterialApp(navigatorKey: navigatorKey, title: 'Phone', debugShowCheckedModeBanner: false, theme: _theme.buildLightTheme(), darkTheme: _theme.buildDarkTheme(), themeMode: _theme.themeMode, home: const HomeScreen());
   }
 }
 
@@ -83,31 +57,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 1; // Start on Recents
+  int _currentIndex = 1;
   final CallService _callService = CallService();
-  final ContactService _contactService = ContactService();
-  final FavoritesService _favoritesService = FavoritesService();
 
   @override
   void initState() {
     super.initState();
-    // Defer heavy init to after first frame to reduce jank
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initApp());
+    _initApp();
   }
 
   Future<void> _initApp() async {
-    // Request permissions
-    await [
-      Permission.phone,
-      Permission.contacts,
-      Permission.microphone,
-      Permission.storage,
-    ].request();
-
-    // Pre-cache contacts and favorites in parallel (non-blocking)
-    _contactService.preload();
-    _favoritesService.load();
-
+    await [Permission.phone, Permission.contacts, Permission.microphone, Permission.storage].request();
     _callService.listenToCallEvents();
     _callService.requestDefaultDialer();
   }
@@ -118,13 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
         pageBuilder: (_, _, _) => const DialpadScreen(),
         transitionsBuilder: (_, animation, _, child) {
           return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
             child: child,
           );
         },
@@ -147,9 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   @override
@@ -157,13 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: cs.brightness == Brightness.dark
-            ? Brightness.light
-            : Brightness.dark,
-        systemNavigationBarColor: cs.surfaceContainerLow,
-      ),
+      value: SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: cs.brightness == Brightness.dark ? Brightness.light : Brightness.dark, systemNavigationBarColor: cs.surfaceContainerLow),
       child: Scaffold(
         body: SafeArea(
           child: Column(
@@ -184,23 +130,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           children: [
-                            Icon(Icons.search_rounded,
-                                color: cs.onSurfaceVariant, size: 22),
+                            Icon(Icons.search_rounded, color: cs.onSurfaceVariant, size: 22),
                             const SizedBox(width: 14),
                             Expanded(
-                              child: Text(
-                                'Search contacts & places',
-                                style: TextStyle(
-                                    color: cs.onSurfaceVariant, fontSize: 16),
-                              ),
+                              child: Text('Search contacts & places', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 16)),
                             ),
                             GestureDetector(
                               onTap: _openSettings,
                               child: CircleAvatar(
                                 radius: 16,
                                 backgroundColor: cs.primary,
-                                child: Icon(Icons.person_rounded,
-                                    size: 18, color: cs.onPrimary),
+                                child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
                               ),
                             ),
                           ],
@@ -211,16 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // Body
+              // Body - IndexedStack keeps tab state alive
               Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: const [
-                    RepaintBoundary(child: FavouritesScreen()),
-                    RepaintBoundary(child: RecentsScreen()),
-                    RepaintBoundary(child: ContactsScreen()),
-                  ],
-                ),
+                child: IndexedStack(index: _currentIndex, children: const [_FavouritesPlaceholder(), RecentsScreen(), ContactsScreen()]),
               ),
             ],
           ),
@@ -229,30 +162,38 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedIndex: _currentIndex,
           onDestinationSelected: (i) => setState(() => _currentIndex = i),
           destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.star_outline_rounded),
-              selectedIcon: Icon(Icons.star_rounded),
-              label: 'Favourites',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.access_time_rounded),
-              selectedIcon: Icon(Icons.access_time_filled_rounded),
-              label: 'Recents',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded),
-              label: 'Contacts',
-            ),
+            NavigationDestination(icon: Icon(Icons.star_outline_rounded), selectedIcon: Icon(Icons.star_rounded), label: 'Favourites'),
+            NavigationDestination(icon: Icon(Icons.access_time_rounded), selectedIcon: Icon(Icons.access_time_filled_rounded), label: 'Recents'),
+            NavigationDestination(icon: Icon(Icons.people_outline_rounded), selectedIcon: Icon(Icons.people_rounded), label: 'Contacts'),
           ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: _openDialpad,
           elevation: 2,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: const Icon(Icons.dialpad_rounded, size: 26),
         ),
+      ),
+    );
+  }
+}
+
+class _FavouritesPlaceholder extends StatelessWidget {
+  const _FavouritesPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star_outline_rounded, size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          Text('No favourites yet', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          Text('Add favourites from your contacts', style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
+        ],
       ),
     );
   }

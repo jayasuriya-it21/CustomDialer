@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/call_service.dart';
-import '../services/recording_service.dart';
 
 class InCallScreen extends StatefulWidget {
   final String callerName;
@@ -16,51 +17,55 @@ class InCallScreen extends StatefulWidget {
 
 class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMixin {
   final CallService _callService = CallService();
-  final RecordingService _recordingService = RecordingService();
 
   bool _isMuted = false;
   bool _isSpeaker = false;
+  bool _isRecording = false;
   bool _isOnHold = false;
   bool _showDialpad = false;
   bool _isCallAnswered = false;
 
+  late final AudioRecorder _audioRecorder;
+
+  // Call timer - only starts after call is answered/connected
   Timer? _callTimer;
   int _callSeconds = 0;
 
-  late AnimationController _fadeCtrl;
+  // Animations
   late AnimationController _pulseCtrl;
   late Animation<double> _pulseAnim;
+  late AnimationController _fadeCtrl;
 
   String _callStatus = '';
 
   @override
   void initState() {
     super.initState();
+    _audioRecorder = AudioRecorder();
+
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.92, end: 1.08).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _fadeCtrl.forward();
 
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.9, end: 1.06).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _callStatus = widget.isIncoming ? 'Incoming call' : 'Calling...';
 
-    _callStatus = widget.isIncoming ? '' : 'Calling...';
-
-    if (widget.isIncoming) {
-      _isCallAnswered = true;
-      _startTimer();
+    if (!widget.isIncoming) {
+      _isCallAnswered = false; // will become true when state=active
     }
 
-    _callService.callState.addListener(_onCallStateChanged);
-    _checkAutoRecord();
+    _listenCallState();
   }
 
-  Future<void> _checkAutoRecord() async {
-    // Will trigger when call becomes active
+  void _listenCallState() {
+    _callService.callState.addListener(_onCallStateChanged);
   }
 
   void _onCallStateChanged() {
     final state = _callService.callState.value;
     if (!mounted) return;
+
     setState(() {
       switch (state) {
         case 'active':
@@ -69,8 +74,6 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
             _startTimer();
           }
           _callStatus = '';
-          _pulseCtrl.stop();
-          _tryAutoRecord();
           break;
         case 'ringing':
           _callStatus = 'Incoming call';
@@ -86,34 +89,19 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
           break;
         case 'disconnected':
           _callStatus = 'Call ended';
-          _stopRecordingIfNeeded();
+          break;
+        default:
           break;
       }
     });
   }
 
-  Future<void> _tryAutoRecord() async {
-    if (await _recordingService.autoRecordEnabled && !_recordingService.isRecording) {
-      await _recordingService.startRecording(contactName: widget.callerName);
-      if (!_isSpeaker) {
-        _isSpeaker = true;
-        await _callService.setAudioRoute(1);
-      }
-      if (mounted) setState(() {});
-    }
-  }
-
-  Future<void> _stopRecordingIfNeeded() async {
-    if (_recordingService.isRecording) {
-      await _recordingService.stopRecording();
-    }
-  }
-
   @override
   void dispose() {
     _callTimer?.cancel();
-    _fadeCtrl.dispose();
     _pulseCtrl.dispose();
+    _fadeCtrl.dispose();
+    _audioRecorder.dispose();
     _callService.callState.removeListener(_onCallStateChanged);
     super.dispose();
   }
@@ -130,17 +118,32 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
     final h = _callSeconds ~/ 3600;
     final m = (_callSeconds % 3600) ~/ 60;
     final s = _callSeconds % 60;
-    if (h > 0) {
-      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    }
+    if (h > 0) return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   // ---- Actions ----
 
+  Future<void> _answerCall() async {
+    HapticFeedback.mediumImpact();
+    await _callService.answerCall();
+    setState(() {
+      _isCallAnswered = true;
+      _callStatus = '';
+    });
+    _startTimer();
+  }
+
+  Future<void> _rejectCall() async {
+    HapticFeedback.heavyImpact();
+    if (_isRecording) await _audioRecorder.stop();
+    await _callService.rejectCall();
+    if (mounted) Navigator.pop(context);
+  }
+
   Future<void> _disconnect() async {
     HapticFeedback.heavyImpact();
-    await _stopRecordingIfNeeded();
+    if (_isRecording) await _audioRecorder.stop();
     await _callService.disconnectCall();
     if (mounted) Navigator.pop(context);
   }
@@ -154,10 +157,14 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
   Future<void> _toggleSpeaker() async {
     HapticFeedback.lightImpact();
     if (_isSpeaker) {
-      setState(() => _isSpeaker = false);
+      setState(() {
+        _isSpeaker = false;
+      });
       await _callService.setAudioRoute(0);
     } else {
-      setState(() => _isSpeaker = true);
+      setState(() {
+        _isSpeaker = true;
+      });
       await _callService.setAudioRoute(1);
     }
   }
@@ -175,26 +182,39 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
   Future<void> _toggleRecording() async {
     HapticFeedback.lightImpact();
     try {
-      if (_recordingService.isRecording) {
-        final path = await _recordingService.stopRecording();
+      if (_isRecording) {
+        final path = await _audioRecorder.stop();
+        setState(() => _isRecording = false);
         if (path != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Recording saved'),
+              content: Text('Recording saved: ${path.split('/').last}'),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
       } else {
-        final path = await _recordingService.startRecording(contactName: widget.callerName);
-        if (path != null && !_isSpeaker) {
-          setState(() => _isSpeaker = true);
-          await _callService.setAudioRoute(1);
+        if (await _audioRecorder.hasPermission()) {
+          final dir = await getApplicationDocumentsDirectory();
+          final ts = DateTime.now().millisecondsSinceEpoch;
+          final path = '${dir.path}/call_$ts.m4a';
+
+          await _audioRecorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+          setState(() => _isRecording = true);
+
+          // Auto-enable speaker for 2-way capture
+          if (!_isSpeaker) {
+            setState(() {
+              _isSpeaker = true;
+            });
+            await _callService.setAudioRoute(1);
+          }
         }
       }
-      if (mounted) setState(() {});
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Recording error: $e");
+    }
   }
 
   void _onDtmf(String digit) {
@@ -206,118 +226,73 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final isRecording = _recordingService.isRecording;
-
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1A1A2E), Color(0xFF0F0F0F), Color(0xFF0A0A0A)], stops: [0.0, 0.5, 1.0]),
-        ),
-        child: FadeTransition(
-          opacity: _fadeCtrl,
-          child: SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 48),
-                _buildCallerInfo(isRecording),
-                const Spacer(),
-                if (_isCallAnswered) AnimatedSwitcher(duration: const Duration(milliseconds: 250), switchInCurve: Curves.easeOut, switchOutCurve: Curves.easeIn, child: _showDialpad ? _buildInCallDialpad() : _buildActionGrid(isRecording)),
-                const SizedBox(height: 36),
-                _buildEndCallButton(),
-                const SizedBox(height: 52),
-              ],
-            ),
+      backgroundColor: const Color(0xFF121212),
+      body: FadeTransition(
+        opacity: _fadeCtrl,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 32),
+              _buildCallerInfo(),
+              const Spacer(),
+              if (_isCallAnswered) ...[if (_showDialpad) _buildInCallDialpad() else _buildActionGrid(), const SizedBox(height: 24)],
+              _buildCallControls(),
+              const SizedBox(height: 40),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCallerInfo(bool isRecording) {
+  Widget _buildCallerInfo() {
     return Column(
       children: [
-        // Avatar with gradient ring
+        // Avatar with pulse animation for incoming
         ScaleTransition(
-          scale: !_isCallAnswered ? _pulseAnim : const AlwaysStoppedAnimation(1.0),
+          scale: widget.isIncoming && !_isCallAnswered ? _pulseAnim : const AlwaysStoppedAnimation(1.0),
           child: Container(
-            padding: const EdgeInsets.all(4),
+            width: 88,
+            height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF4285F4).withValues(alpha: 0.4), const Color(0xFFAB47BC).withValues(alpha: 0.4)]),
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.blue.withValues(alpha: 0.25), Colors.purple.withValues(alpha: 0.25)]),
             ),
-            child: Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF1A1A2E),
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF2D2D44), const Color(0xFF1A1A2E)]),
-              ),
-              child: Center(
-                child: Text(
-                  _getInitials(widget.callerName),
-                  style: const TextStyle(color: Colors.white70, fontSize: 38, fontWeight: FontWeight.w300),
-                ),
-              ),
-            ),
+            child: const Icon(Icons.person_rounded, size: 44, color: Colors.white60),
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
 
-        // Name
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Text(
-            widget.callerName,
-            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w300, letterSpacing: 0.5),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+        // Caller name
+        Text(
+          widget.callerName,
+          style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w400),
+          textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
 
         // Status / Timer
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (isRecording)
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 600),
-                builder: (_, v, _) => Opacity(
-                  opacity: v,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.red),
-                  ),
-                ),
+            if (_isRecording)
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.red),
               ),
-            Text(
-              _isCallAnswered && _callStatus.isEmpty ? _formatTime() : _callStatus,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 15, fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: 1.0),
-            ),
+            Text(_isCallAnswered && _callStatus.isEmpty ? _formatTime() : _callStatus, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 15)),
           ],
         ),
       ],
     );
   }
 
-  String _getInitials(String name) {
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0][0].toUpperCase();
-  }
-
-  Widget _buildActionGrid(bool isRecording) {
+  Widget _buildActionGrid() {
     return Padding(
-      key: const ValueKey('actions'),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           Row(
@@ -334,7 +309,7 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
             children: [
               _actionBtn(icon: Icons.add_call, label: 'Add call', onTap: () {}),
               _actionBtn(icon: _isOnHold ? Icons.play_arrow_rounded : Icons.pause_rounded, label: _isOnHold ? 'Resume' : 'Hold', isActive: _isOnHold, onTap: _toggleHold),
-              _actionBtn(icon: isRecording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded, label: isRecording ? 'Stop' : 'Record', isActive: isRecording, activeColor: Colors.red, onTap: _toggleRecording),
+              _actionBtn(icon: _isRecording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded, label: _isRecording ? 'Stop' : 'Record', isActive: _isRecording, activeColor: Colors.red, onTap: _toggleRecording),
             ],
           ),
         ],
@@ -349,26 +324,20 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 85,
+        width: 80,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isActive ? bgActive : Colors.white.withValues(alpha: 0.08),
-                boxShadow: isActive ? [BoxShadow(color: (activeColor ?? Colors.white).withValues(alpha: 0.2), blurRadius: 12, spreadRadius: 1)] : null,
-              ),
-              child: Icon(icon, color: isActive ? fgActive : Colors.white, size: 24),
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: isActive ? bgActive : Colors.transparent),
+              child: Icon(icon, color: isActive ? fgActive : Colors.white, size: 28),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Text(
               label,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w400),
               textAlign: TextAlign.center,
             ),
           ],
@@ -379,14 +348,13 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
 
   Widget _buildInCallDialpad() {
     return Column(
-      key: const ValueKey('dialpad'),
       children: [
         Align(
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsets.only(left: 12),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white54),
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white60),
               onPressed: () => setState(() => _showDialpad = false),
             ),
           ),
@@ -418,12 +386,12 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
                 borderRadius: BorderRadius.circular(32),
                 splashColor: Colors.white10,
                 child: SizedBox(
-                  width: 68,
-                  height: 54,
+                  width: 64,
+                  height: 52,
                   child: Center(
                     child: Text(
                       d,
-                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w300),
+                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w300),
                     ),
                   ),
                 ),
@@ -434,26 +402,42 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
     );
   }
 
-  Widget _buildEndCallButton() {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.35), blurRadius: 24, spreadRadius: 2)],
-      ),
-      child: Material(
-        color: const Color(0xFFEA4335),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: _disconnect,
-          customBorder: const CircleBorder(),
-          splashColor: Colors.white24,
-          child: const SizedBox(
-            width: 76,
-            height: 76,
-            child: Center(child: Icon(Icons.call_end_rounded, color: Colors.white, size: 34)),
+  Widget _buildCallControls() {
+    if (widget.isIncoming && !_isCallAnswered) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _callBtn(Icons.call_end_rounded, Colors.red, _rejectCall, label: 'Decline'),
+          _callBtn(Icons.call_rounded, const Color(0xFF34A853), _answerCall, label: 'Answer'),
+        ],
+      );
+    }
+    return _callBtn(Icons.call_end_rounded, Colors.red, _disconnect, size: 68);
+  }
+
+  Widget _callBtn(IconData icon, Color color, VoidCallback onTap, {double size = 60, String? label}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: color,
+          shape: const CircleBorder(),
+          elevation: 4,
+          shadowColor: color.withValues(alpha: 0.35),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Center(
+                child: Icon(icon, color: Colors.white, size: size * 0.42),
+              ),
+            ),
           ),
         ),
-      ),
+        if (label != null) ...[const SizedBox(height: 10), Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 14))],
+      ],
     );
   }
 }

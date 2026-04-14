@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/call_service.dart';
-import '../services/contact_service.dart';
-import '../services/favorites_service.dart';
 import '../widgets/contact_avatar.dart';
-import 'contact_detail_screen.dart';
 
 class RecentsScreen extends StatefulWidget {
   const RecentsScreen({super.key});
@@ -13,66 +10,39 @@ class RecentsScreen extends StatefulWidget {
   State<RecentsScreen> createState() => _RecentsScreenState();
 }
 
-class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProviderStateMixin {
   final CallService _callService = CallService();
-  final ContactService _contactService = ContactService();
-  final FavoritesService _favoritesService = FavoritesService();
   List<Map<String, dynamic>> _allLogs = [];
-  List<Map<String, dynamic>> _filteredLogs = [];
-  List<Map<String, dynamic>> _favorites = [];
   bool _isLoading = true;
   late TabController _tabController;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
-    _loadData();
+    _loadCallLogs();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    _recomputeFiltered();
-  }
-
-  Future<void> _loadData() async {
-    await _favoritesService.load();
+  Future<void> _loadCallLogs() async {
     final logs = await _callService.getCallLog();
-
-    List<Map<String, dynamic>> contacts;
-    if (_contactService.isLoaded) {
-      contacts = _contactService.cachedContacts;
-    } else {
-      contacts = await _contactService.getContacts();
-    }
-
-    if (mounted) {
-      _allLogs = logs;
-      _favorites = _favoritesService.filterFavorites(contacts);
-      _recomputeFiltered();
-      setState(() => _isLoading = false);
-    }
+    if (mounted)
+      setState(() {
+        _allLogs = logs;
+        _isLoading = false;
+      });
   }
 
-  void _recomputeFiltered() {
-    setState(() {
-      if (_tabController.index == 1) {
-        _filteredLogs = _allLogs.where((l) => l['type'] == 3 || l['type'] == 5).toList();
-      } else {
-        _filteredLogs = List.from(_allLogs);
-      }
-    });
+  List<Map<String, dynamic>> get _filteredLogs {
+    if (_tabController.index == 1) {
+      return _allLogs.where((l) => l['type'] == 3 || l['type'] == 5).toList();
+    }
+    return _allLogs;
   }
 
   String _formatTime(int timestamp) {
@@ -80,10 +50,10 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     final now = DateTime.now();
     final diff = now.difference(date);
     if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 1) return '${diff.inMinutes} min ago';
     if (diff.inHours < 24 && date.day == now.day) return DateFormat.jm().format(date);
     if (diff.inDays < 2) return 'Yesterday';
-    if (diff.inDays < 7) return DateFormat.E().format(date);
+    if (diff.inDays < 7) return DateFormat.EEEE().format(date);
     return DateFormat.MMMd().format(date);
   }
 
@@ -139,43 +109,16 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     }
   }
 
-  void _deleteLog(Map<String, dynamic> log) {
-    final id = log['id']?.toString() ?? '';
-    final index = _allLogs.indexOf(log);
-    _allLogs.remove(log);
-    _recomputeFiltered();
-    _callService.deleteCallLog(id);
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Call log deleted'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            if (index >= 0 && index <= _allLogs.length) {
-              _allLogs.insert(index, log);
-            } else {
-              _allLogs.add(log);
-            }
-            _recomputeFiltered();
-          },
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final cs = Theme.of(context).colorScheme;
 
     return Column(
       children: [
+        // Filter tabs
         TabBar(
           controller: _tabController,
+          onTap: (_) => setState(() {}),
           labelColor: cs.primary,
           unselectedLabelColor: cs.onSurfaceVariant,
           indicatorColor: cs.primary,
@@ -189,79 +132,18 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              : _filteredLogs.isEmpty
+              ? _buildEmptyState()
               : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: CustomScrollView(
+                  onRefresh: _loadCallLogs,
+                  child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    slivers: [
-                      // Favorites strip
-                      if (_favorites.isNotEmpty && _tabController.index == 0) SliverToBoxAdapter(child: _buildFavoritesStrip()),
-                      // Call logs
-                      if (_filteredLogs.isEmpty) SliverFillRemaining(child: _buildEmptyState()) else SliverList(delegate: SliverChildBuilderDelegate(_buildLogItem, childCount: _filteredLogs.length)),
-                    ],
+                    padding: const EdgeInsets.only(top: 4),
+                    itemCount: _filteredLogs.length,
+                    itemBuilder: _buildLogItem,
                   ),
                 ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildFavoritesStrip() {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Text(
-            'Favourites',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary, letterSpacing: 0.3),
-          ),
-        ),
-        SizedBox(
-          height: 90,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _favorites.length,
-            itemBuilder: (_, i) {
-              final c = _favorites[i];
-              final name = (c['name'] as String?) ?? '';
-              final number = (c['number'] as String?) ?? '';
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: GestureDetector(
-                  onTap: () => _callService.makeCall(number),
-                  onLongPress: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ContactDetailScreen(name: name, number: number),
-                      ),
-                    );
-                  },
-                  child: SizedBox(
-                    width: 64,
-                    child: Column(
-                      children: [
-                        ContactAvatar(name: name, radius: 24),
-                        const SizedBox(height: 6),
-                        Text(
-                          name.split(' ').first,
-                          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Divider(height: 1, indent: 16, endIndent: 16, color: cs.outlineVariant.withValues(alpha: 0.3)),
       ],
     );
   }
@@ -291,8 +173,21 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     final isMissed = type == 3 || type == 5;
     final cs = Theme.of(context).colorScheme;
 
-    return InkWell(
-      onLongPress: () => _showContextMenu(log, displayName, number, type, date, duration),
+    return Dismissible(
+      key: Key(log['id']?.toString() ?? index.toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        color: Colors.red,
+        child: const Icon(Icons.delete_rounded, color: Colors.white),
+      ),
+      onDismissed: (_) {
+        final id = log['id']?.toString() ?? '';
+        _allLogs.removeAt(_allLogs.indexOf(log));
+        _callService.deleteCallLog(id);
+        setState(() {});
+      },
       child: ListTile(
         leading: ContactAvatar(name: displayName, radius: 22),
         title: Text(
@@ -326,66 +221,8 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
     );
   }
 
-  void _showContextMenu(Map<String, dynamic> log, String name, String number, int type, int date, int duration) {
-    final cs = Theme.of(context).colorScheme;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cs.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: cs.outlineVariant, borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: const Icon(Icons.call_rounded),
-              title: Text('Call $name'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _callService.makeCall(number);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.message_rounded),
-              title: const Text('Send message'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _contactService.openSms(number);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded),
-              title: const Text('Delete'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _deleteLog(log);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.block_rounded),
-              title: const Text('Block number'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _callService.openBlockedNumbers();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showCallDetails(String name, String number, int type, int date, int duration) {
     final cs = Theme.of(context).colorScheme;
-    final dateObj = DateTime.fromMillisecondsSinceEpoch(date);
-    final exactTime = DateFormat('EEEE, MMM d · h:mm a').format(dateObj);
-
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surfaceContainerLow,
@@ -417,17 +254,7 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(_typeIcon(type), size: 16, color: _typeColor(type)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('$exactTime${duration > 0 ? ' · ${_formatDuration(duration)}' : ''}', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -435,19 +262,8 @@ class _RecentsScreenState extends State<RecentsScreen> with SingleTickerProvider
                   Navigator.pop(ctx);
                   _callService.makeCall(number);
                 }),
-                _sheetAction(Icons.message_rounded, 'Message', cs.primary, () {
-                  Navigator.pop(ctx);
-                  _contactService.openSms(number);
-                }),
-                _sheetAction(Icons.info_outline_rounded, 'Details', cs.primary, () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ContactDetailScreen(name: name, number: number),
-                    ),
-                  );
-                }),
+                _sheetAction(Icons.message_rounded, 'Message', cs.primary, () => Navigator.pop(ctx)),
+                _sheetAction(Icons.info_outline_rounded, 'Details', cs.primary, () => Navigator.pop(ctx)),
               ],
             ),
             const SizedBox(height: 12),

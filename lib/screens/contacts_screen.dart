@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/contact_service.dart';
 import '../services/call_service.dart';
 import '../widgets/contact_avatar.dart';
 import 'contact_detail_screen.dart';
@@ -11,15 +10,12 @@ class ContactsScreen extends StatefulWidget {
   State<ContactsScreen> createState() => _ContactsScreenState();
 }
 
-class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAliveClientMixin {
-  final ContactService _contactService = ContactService();
+class _ContactsScreenState extends State<ContactsScreen> {
   final CallService _callService = CallService();
   List<Map<String, dynamic>> _contacts = [];
-  List<_ListItem> _items = [];
   bool _isLoading = true;
 
-  @override
-  bool get wantKeepAlive => true;
+  List<_ListItem> _items = [];
 
   @override
   void initState() {
@@ -29,16 +25,9 @@ class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAlive
 
   Future<void> _loadContacts() async {
     setState(() => _isLoading = true);
+    final contacts = await _callService.getContacts();
 
-    // Use cached contacts if available
-    List<Map<String, dynamic>> contacts;
-    if (_contactService.isLoaded) {
-      contacts = _contactService.cachedContacts;
-    } else {
-      contacts = await _contactService.getContacts();
-    }
-
-    // Pre-compute grouped flat list
+    // Group by first letter
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (final c in contacts) {
       final name = (c['name'] as String?) ?? '';
@@ -47,6 +36,7 @@ class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAlive
     }
     final keys = grouped.keys.toList()..sort();
 
+    // Build flat list with headers for better scroll performance
     final items = <_ListItem>[];
     for (final key in keys) {
       items.add(_ListItem(isHeader: true, letter: key));
@@ -66,7 +56,6 @@ class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAlive
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final cs = Theme.of(context).colorScheme;
 
     if (_isLoading) {
@@ -87,15 +76,11 @@ class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAlive
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await _contactService.refresh();
-        await _loadContacts();
-      },
+      onRefresh: _loadContacts,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.only(top: 4),
         itemCount: _items.length,
-        itemExtent: null,
         itemBuilder: (_, i) {
           final item = _items[i];
           if (item.isHeader) {
@@ -112,7 +97,7 @@ class _ContactsScreenState extends State<ContactsScreen> with AutomaticKeepAlive
           final number = (c['number'] as String?) ?? '';
 
           return ListTile(
-            leading: ContactAvatar(name: name, heroTag: 'contact_avatar_$name'),
+            leading: ContactAvatar(name: name),
             title: Text(
               name,
               style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),

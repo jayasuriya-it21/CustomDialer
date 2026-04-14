@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/call_service.dart';
-import '../services/contact_service.dart';
-import '../services/favorites_service.dart';
 import '../widgets/contact_avatar.dart';
 
 class ContactDetailScreen extends StatefulWidget {
@@ -16,12 +14,8 @@ class ContactDetailScreen extends StatefulWidget {
 
 class _ContactDetailScreenState extends State<ContactDetailScreen> {
   final CallService _callService = CallService();
-  final ContactService _contactService = ContactService();
-  final FavoritesService _favoritesService = FavoritesService();
   List<Map<String, dynamic>> _phoneNumbers = [];
   bool _isLoading = true;
-  bool _isFavorite = false;
-  String _contactId = '';
 
   @override
   void initState() {
@@ -30,9 +24,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
   }
 
   Future<void> _loadDetails() async {
-    final details = await _contactService.getContactDetails(widget.number);
-    await _favoritesService.load();
-
+    final details = await _callService.getContactDetails(widget.number);
     if (mounted) {
       final nums = details['numbers'];
       if (nums is List) {
@@ -43,25 +35,8 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           {'number': widget.number, 'type': 'Mobile'},
         ];
       }
-
-      // Find contactId for favorites
-      final contacts = _contactService.cachedContacts;
-      for (final c in contacts) {
-        if ((c['name'] as String?) == widget.name) {
-          _contactId = c['contactId']?.toString() ?? '';
-          break;
-        }
-      }
-      _isFavorite = _contactId.isNotEmpty && _favoritesService.isFavorite(_contactId);
-
       setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _toggleFavorite() async {
-    if (_contactId.isEmpty) return;
-    await _favoritesService.toggleFavorite(_contactId);
-    setState(() => _isFavorite = !_isFavorite);
   }
 
   @override
@@ -75,12 +50,6 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             expandedHeight: 200,
             pinned: true,
             backgroundColor: cs.surfaceContainerLow,
-            actions: [
-              IconButton(
-                icon: Icon(_isFavorite ? Icons.star_rounded : Icons.star_outline_rounded, color: _isFavorite ? Colors.amber : cs.onSurfaceVariant),
-                onPressed: _toggleFavorite,
-              ),
-            ],
             flexibleSpace: FlexibleSpaceBar(
               title: Text(widget.name, style: const TextStyle(fontWeight: FontWeight.w600)),
               centerTitle: false,
@@ -90,33 +59,13 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 16),
-                ContactAvatar(name: widget.name, radius: 48, heroTag: 'contact_avatar_${widget.name}'),
+                ContactAvatar(name: widget.name, radius: 48),
                 const SizedBox(height: 16),
 
                 // Quick actions
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _quickAction(Icons.call_rounded, 'Call', const Color(0xFF34A853), () => _callService.makeCall(widget.number)),
-                      _quickAction(Icons.message_rounded, 'Text', cs.primary, () => _contactService.openSms(widget.number)),
-                      _quickAction(Icons.videocam_rounded, 'Video', cs.primary, () => _contactService.openVideoCall(widget.number)),
-                      _quickAction(Icons.chat_rounded, 'WhatsApp', const Color(0xFF25D366), () async {
-                        final success = await _contactService.openWhatsApp(widget.number);
-                        if (!success) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('WhatsApp is not installed'),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
-                        }
-                      }),
-                    ],
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [_quickAction(Icons.call_rounded, 'Call', const Color(0xFF34A853), () => _callService.makeCall(widget.number)), _quickAction(Icons.message_rounded, 'Text', cs.primary, () {}), _quickAction(Icons.videocam_rounded, 'Video', cs.primary, () {})]),
                 ),
 
                 const SizedBox(height: 24),
@@ -153,7 +102,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                           ),
                           IconButton(
                             icon: Icon(Icons.message_rounded, color: cs.primary, size: 20),
-                            onPressed: () => _contactService.openSms(num),
+                            onPressed: () {},
                           ),
                         ],
                       ),
@@ -176,12 +125,12 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.12)),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(label, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
