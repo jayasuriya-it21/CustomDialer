@@ -1,475 +1,175 @@
-Below is a **complete professional documentation** for your project — structured like a real production system document. You can directly use this as:
-
-*   ✅ README.md
-*   ✅ Project documentation
-*   ✅ Knowledge transfer (KT) document
-*   ✅ Portfolio project description
-
-***
-
-# 🌟 **Candidate Management System – Full Documentation**
-
-***
-
-# 📌 1. **Project Overview**
-
-The **Candidate Management System** is a web-based recruitment workflow application designed to manage candidate lifecycle stages including:
-
-*   Candidate viewing
-*   Filtering & searching
-*   Status transitions (Shortlist → Select → Reject → Remove)
-*   Resume handling (view & download)
-*   Skill and experience filtering
-
-***
-
-## 🎯 **Primary Goal**
-
-To provide a **centralized, scalable, and efficient system** for managing candidates across hiring stages with a consistent UI and reusable architecture.
-
-***
-
-# 🏗️ 2. **Technology Stack**
-
-## 🔷 Frontend
-
-*   Flutter Web
-*   Dart
-*   BLoC (State Management)
-
-## 🔷 Backend
-
-*   Spring Boot (Java)
-*   REST APIs
-
-## 🔷 Other Concepts
-
-*   RESTful architecture
-*   JWT authentication
-*   MVC pattern (backend)
-*   BLoC pattern (frontend)
-
-***
-
-# 🧩 3. **Project Architecture**
-
-***
-
-## 🔹 Frontend Architecture (Flutter)
-
-    lib/
-    │
-    ├── core/
-    │   ├── models/
-    │   ├── constant/
-    │   ├── network/
-    │   └── utils/
-    │
-    ├── features/
-    │   └── view_candidates/
-    │       ├── bloc/
-    │       ├── screen/
-    │       └── widget/
-
-***
-
-## 🔹 Key Layers
-
-### ✅ UI Layer
-
-*   Screens
-*   Reusable Widgets
-
-### ✅ Business Logic Layer
-
-*   BLoC (Events → State updates)
-
-### ✅ Data Layer
-
-*   API service
-*   Models
-
-***
-
-# 🔄 4. **Candidate Workflow Lifecycle**
-
-    ACTIVE
-       ↓
-    SHORTLISTED
-       ↓
-    SELECTED   ✅ NEW
-       ↓
-    FINAL (Optional)
-
-    OR
-
-    SHORTLISTED → REJECTED
-    ANY STATUS → REMOVED
-    REMOVED → RESTORED (ACTIVE)
-
-***
-
-# 📄 5. **Pages in Application**
-
-***
-
-## 🔷 1. Explore / View Page
-
-*   Displays all candidates
-*   Supports filters
-*   Shows status badge
-*   Allows:
-    *   Shortlist
-    *   Reject
-    *   Remove
-*   Hides ACTIVE badge (UX decision)
-
-***
-
-## 🔷 2. Shortlisted Page
-
-*   Displays only SHORTLISTED candidates
-*   Actions:
-    *   ✅ Select (NEW)
-    *   Reject
-    *   Remove
-
-***
-
-## 🔷 3. Selected Page ✅ NEW
-
-*   Displays SELECTED candidates
-*   Actions:
-    *   Reject
-    *   Remove
-*   Includes:
-    *   Filter panel
-    *   Search bar
-
-***
-
-## 🔷 4. Rejected Page
-
-*   Displays rejected candidates
-*   Actions:
-    *   Restore
-    *   Remove
-
-***
-
-## 🔷 5. Removed Page
-
-*   Displays deleted candidates
-*   Actions:
-    *   Restore
-
-***
-
-# 🧱 6. **Reusable Components**
-
-***
-
-## ✅ CandidateCard
-
-A common UI component used across all pages.
-
-### Features:
-
-*   Status badge
-*   Dynamic button layout
-*   View/Download resume
-*   Delete icon
-*   Vertical / horizontal actions
-*   Confirmation dialogs
-
-***
-
-## ✅ SearchWidget
-
-Reusable search bar:
-
-### Features:
-
-*   Searches:
-    *   candidate name
-    *   candidate email
-*   Clear button support
-*   Backward compatible API
-
-***
-
-## ✅ FilterCard
-
-Reusable filter panel:
-
-### Filters:
-
-*   Experience (Min/Max)
-*   Skills
-
-### Features:
-
-*   Dynamic dropdown validation
-*   Reset filters support
-*   Responsive UI
-
-***
-
-# 🧠 7. **State Management (BLoC)**
-
-***
-
-## 🔷 BLoC Structure
-
-    Event → Bloc → State → UI
-
-***
-
-## 🔷 Key Events
-
-| Event                   | Purpose                  |
-| ----------------------- | ------------------------ |
-| FetchCandidates         | Load all candidates      |
-| FetchCandidatesByStatus | Load filtered candidates |
-| UpdateSearch            | Search query             |
-| ToggleSkill             | Filter by skill          |
-| UpdateExperience        | Filter by experience     |
-| SelectCandidate         | ✅ Move to SELECTED       |
-| ShortlistCandidate      | Move to shortlist        |
-| RejectCandidate         | Reject                   |
-| RemoveCandidate         | Delete                   |
-| ActivateCandidate       | Restore                  |
-
-***
-
-## 🔷 State Fields
-
-*   entireCandidateList
-*   filteredCandidateList
-*   selectedSkillFilters
-*   searchKeyword
-*   experience range
-*   loading status
-*   user message
-
-***
-
-# 🔍 8. **Filtering Logic**
-
-***
-
-### ✅ Search
-
-Search works on:
-
-```dart
-candidateFullName + candidateEmailAddress
-```
-
-***
-
-### ✅ Skill Filter
-
-*   Case-insensitive
-*   Multiple selection
-
-***
-
-### ✅ Experience Filter
-
-Rules:
-
-*   Max must be greater than Min
-*   Automatically resets invalid max values
-
-***
-
-### ✅ Reset Filters
-
-Resets:
-
-*   Search
-*   Skills
-*   Experience
-*   Email filters
-
-***
-
-# 📄 9. **Resume Handling**
-
-***
-
-## ✅ Download Resume
-
-*   Supports all formats:
-    *   PDF
-    *   DOC
-    *   DOCX
-    *   PPT
-    *   PPTX
-
-### Backend Fix:
-
-```java
-Files.probeContentType(path)
-```
-
-***
-
-## ✅ View Resume
-
-*   Only PDFs are viewable
-*   Non-PDF:
-    *   View button disabled
-
-***
-
-## ✅ Data Model
-
-```dart
-candidateResumeFileName
-candidateResumeFilePath
-```
-
-***
-
-# 🔐 10. **Authentication Handling**
-
-***
-
-## ✅ JWT-based API calls
-
-Every request uses:
-
-```dart
-Authorization: Bearer <token>
-```
-
-***
-
-## ✅ Auto Logout (401)
-
-Handled globally:
-
-*   Show session expired message
-*   Clear token
-*   Navigate to login page
-*   Prevent further API calls
-
-***
-
-# ⚙️ 11. **UI Enhancements**
-
-***
-
-✅ Dynamic button width  
-✅ Disabled button styling (white/grey)  
-✅ Status badge improvements  
-✅ PDF-only view icon  
-✅ Consistent color coding
-
-***
-
-# 🧪 12. **Error Handling**
-
-***
-
-### ✅ Network Errors
-
-*   Logged via debug logs
-*   Handled in UI
-
-***
-
-### ✅ API Failures
-
-*   Graceful UI fallback
-*   Snackbar notifications
-
-***
-
-### ✅ Hot Reload Web Issue
-
-Solved:
-
-*   avoid stale HTTP connection reuse
-*   improved CORS handling
-
-***
-
-# 🎨 13. **UI/UX Improvements**
-
-***
-
-✅ Vertical button layout for View page  
-✅ Unified design system  
-✅ Responsive layout  
-✅ Clear icon states  
-✅ Better tagging system
-
-***
-
-# 🗺️ 14. **Routing**
-
-```dart
-AppRouter.selectedCandidate
-```
-
-Navigation available from:
-
-*   Home page cards
-*   Menu (optional)
-
-***
-
-# 🧩 15. **Home Dashboard Integration**
-
-```dart
-HomeModel(
-  homeTitle: AppStrings.selectedCandidates,
-  homeMainIcon: Icons.verified_user_rounded,
-  homeRoute: AppRouter.selectedCandidate,
-)
-```
-
-***
-
-# ✅ 16. **Final System Capabilities**
-
-***
-
-✔ Candidate Listing  
-✔ Advanced Filtering  
-✔ Status Workflow  
-✔ Resume Management  
-✔ UI Reusability  
-✔ Backend Integration  
-✔ Authentication Safety  
-✔ Scalable Architecture
-
-***
-
-# 🚀 17. **Future Enhancements (Optional)**
-
-***
-
-*   Interview scheduling module
-*   Candidate rating system
-*   Analytics dashboard
-*   Pagination / infinite scroll
-*   Role-based access
-*   Export candidates (CSV/PDF)
-
-***
-
-# 🎯 **Conclusion**
-
-This system is now a **production-ready recruitment pipeline module** with:
-
-*   Clean architecture
-*   Reusable components
-*   Strong state management
-*   Robust API integration
-*   Excellent UI consistency
-
-***
+Perfect — I’ve carefully read all your handwritten notes and converted them into **clear, structured development tasks** for both **Frontend (Flutter)** and **Backend (Spring Boot)**.
+I did **NOT change your logic**, only made it clean and implementation-ready ✅
+---
+# 🚀 ✅ FRONTEND TASKS (Flutter)
+---
+## 📌 1. Shortlist Page – Assign Flow
+### 🔹 UI Tasks
+Add **“Assign” button** on each candidate cardOn click → open **Assign Popup Modal**
+---
+### 🔹 Assign Popup
+Show **list of users**Add **search functionality (by name/email)**Allow **select one user**Add **“Next / Proceed” button**
+---
+### 🔹 Confirmation Screen (Step 2)
+Show:
+  * Candidate details  * Selected user detailsInput:
+  * Instruction field (mandatory)Actions:
+  * Confirm & Submit
+---
+### 🔹 After Submission
+Update UI:
+  * Mark candidate as **Assigned**  * Show **“Assigned to {User Name}”**Add **Reassign option**
+---
+## 📌 2. Assigned To Me Page
+### 🔹 Candidate Card UI
+Display:
+NameInstructionAssigned By (User Name)Status (optional)
+---
+### 🔹 Actions
+View DetailsSelect Button
+---
+### 🔹 Select Action Flow
+Open popup:
+  * Enter required details  * Save
+---
+### 🔹 Search Feature
+Search by:
+  * Name  * Email
+---
+## 📌 3. Assigned By Me Page
+### 🔹 Candidate Card UI
+Display:
+NameInstructionAssigned To
+---
+### 🔹 Actions
+View DetailsReassignRevoke
+---
+### 🔹 View Details Page
+Show:
+  * Candidate full details  * InstructionsActions:
+  * Select  * Reassign  * View Resume  * Revoke
+---
+## 📌 4. Admin Page
+### 🔹 User Management UI
+Show all users as cardsInclude:
+  * Name  * Status  * Role
+---
+### 🔹 Actions
+#### Status Flow:
+Pending → Approve / RejectApproved → DisableDisabled → Enable
+---
+### 🔹 Role Management
+Add buttons:
+  * Promote → Admin  * Demote → User
+---
+---
+# ⚙️ ✅ BACKEND TASKS (Spring Boot)
+---
+## 📌 1. Shortlist Page – Assign APIs
+### 🔹 Get Users APIhttp
+GET /api/users
+
+---
+### 🔹 Assign Candidate APIhttp
+POST /api/candidates/{id}/assign
+
+#### Payload:json
+{
+  "assignedToUserId": "",
+  "instruction": ""
+}
+
+---
+## 📌 2. Assigned To Me APIs
+### 🔹 Get Assigned Candidateshttp
+GET /api/candidates/assigned-to-me
+
+---
+### 🔹 Get Candidate Detailshttp
+GET /api/candidates/{id}
+
+---
+### 🔹 Select Candidate (Action API)http
+POST /api/candidates/{id}/select
+
+#### Payload:json
+{
+  "additionalDetails": ""
+}
+
+---
+## 📌 3. Assigned By Me APIs
+### 🔹 Get Assigned By Mehttp
+GET /api/candidates/assigned-by-me
+
+---
+### 🔹 Reassign Candidatehttp
+PUT /api/candidates/{id}/reassign
+
+#### Payload:json
+{
+  "newUserId": ""
+}
+
+---
+### 🔹 Revoke Assignmenthttp
+PUT /api/candidates/{id}/revoke
+
+---
+### 🔹 Get Full Candidate + Assignment Detailshttp
+GET /api/candidates/{id}/details
+
+---
+## 📌 4. Admin APIs
+---
+### 🔹 Update Approval Statushttp
+PUT /api/users/{id}/status
+
+#### Payload:json
+{
+  "status": "APPROVED / REJECTED / DISABLED"
+}
+
+---
+### 🔹 Assign Rolehttp
+PUT /api/users/{id}/role
+
+#### Payload:json
+{
+  "role": "ADMIN / USER"
+}
+
+---
+---
+# 🧠 🔥 EXTRA (IMPORTANT IMPROVEMENTS YOU MISSED)
+I’m adding this because this is where real projects fail 👇
+---
+## ⚠️ Backend Logic Rules
+Only **SHORTLISTED candidates can be assigned**Prevent:
+  * Assigning already assigned candidate (unless reassign)Track:
+  * assignedBy  * assignedTo  * assignedAt
+---
+## ⚠️ Database Changes Needed
+### New Fields in Candidate:sql
+assigned_to_user_id
+assigned_by_user_id
+instruction
+assigned_at
+
+---
+## ⚠️ Security
+Only Admin can:
+  * Approve/Reject users  * Promote/DemoteOnly assigned user can:
+  * Perform “Select” action
+---
+# 🏁 FINAL OUTPUT
+Now your handwritten notes are converted into:
+✅ Developer-ready tasks✅ API structure✅ UI flows✅ Backend logic
+---
+# 🚀 Next Step (Tell Me)
+I can take this further into:
+### 1️⃣ Full DB Schema + Entity Classes
+### 2️⃣ Flutter BLoC Implementation
+### 3️⃣ Spring Boot Controller + Service Code
+### 4️⃣ Convert this into Jira tasks (for real project use)
+Just tell me what you want next 👍
