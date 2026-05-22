@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import '../core/constants/method_channels.dart';
+import '../core/utils/string_utils.dart';
 
 class ContactService {
   static const MethodChannel _channel = MethodChannel(MethodChannels.inCall);
@@ -33,7 +34,16 @@ class ContactService {
     try {
       final result = await _channel.invokeMethod('getContacts');
       if (result is List) {
-        return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        return result.map((e) {
+          final map = Map<String, dynamic>.from(e as Map);
+          return {
+            'contactId': StringUtils.safeUtf16(map['contactId']?.toString()),
+            'name': StringUtils.safeUtf16(map['name']?.toString()),
+            'number': StringUtils.safeUtf16(map['number']?.toString()),
+            'photoUri': StringUtils.safeUtf16(map['photoUri']?.toString()),
+            'type': StringUtils.safeUtf16(map['type']?.toString()),
+          };
+        }).toList();
       }
     } catch (e) {
       debugPrint("Get contacts failed: $e");
@@ -45,7 +55,24 @@ class ContactService {
     try {
       final result = await _channel.invokeMethod('getContactDetails', {'number': number});
       if (result is Map) {
-        return Map<String, dynamic>.from(result);
+        final map = Map<String, dynamic>.from(result);
+        final numbers = map['numbers'] as List?;
+        final sanitizedNumbers = <Map<String, String>>[];
+        if (numbers != null) {
+          for (final numItem in numbers) {
+            if (numItem is Map) {
+              sanitizedNumbers.add({
+                'number': StringUtils.safeUtf16(numItem['number']?.toString()),
+                'type': StringUtils.safeUtf16(numItem['type']?.toString()),
+              });
+            }
+          }
+        }
+        return {
+          'name': StringUtils.safeUtf16(map['name']?.toString()),
+          'photoUri': StringUtils.safeUtf16(map['photoUri']?.toString()),
+          'numbers': sanitizedNumbers,
+        };
       }
     } catch (_) {}
     return {};
@@ -58,7 +85,7 @@ class ContactService {
       final name = details['name'] as String?;
       if (name != null && name.isNotEmpty) return name;
     } catch (_) {}
-    return number;
+    return StringUtils.safeUtf16(number);
   }
 
   /// Open system "Add Contact" screen with pre-filled number

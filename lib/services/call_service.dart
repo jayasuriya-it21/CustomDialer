@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/app_router.dart';
 import '../core/constants/method_channels.dart';
 import '../core/constants/ui_constants.dart';
+import '../core/utils/string_utils.dart';
 import '../features/call/presentation/screens/incoming_call_screen.dart';
 import '../features/call/presentation/screens/in_call_screen.dart';
 import 'contact_service.dart';
@@ -125,7 +126,18 @@ class CallService {
     try {
       final result = await _channel.invokeMethod('getCallLog');
       if (result is List) {
-        return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        return result.map((e) {
+          final map = Map<String, dynamic>.from(e as Map);
+          return {
+            'id': StringUtils.safeUtf16(map['id']?.toString()),
+            'number': StringUtils.safeUtf16(map['number']?.toString()),
+            'name': StringUtils.safeUtf16(map['name']?.toString()),
+            'photoUri': StringUtils.safeUtf16(map['photoUri']?.toString()),
+            'type': map['type'] as int? ?? 0,
+            'date': map['date'] as int? ?? 0,
+            'duration': map['duration'] as int? ?? 0,
+          };
+        }).toList();
       }
     } catch (e) {
       debugPrint("Get call log failed: $e");
@@ -163,7 +175,15 @@ class CallService {
     try {
       final result = await _channel.invokeMethod('getSimInfo');
       if (result is List) {
-        return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        return result.map((e) {
+          final map = Map<String, dynamic>.from(e as Map);
+          return {
+            'slot': map['slot'] as int? ?? 0,
+            'carrier': StringUtils.safeUtf16(map['carrier']?.toString()),
+            'number': StringUtils.safeUtf16(map['number']?.toString()),
+            'subscriptionId': map['subscriptionId'] as int? ?? 0,
+          };
+        }).toList();
       }
     } catch (_) {}
     return [];

@@ -1,3 +1,4 @@
+import '../../../../core/utils/string_utils.dart';
 import '../../../../services/contact_service.dart';
 import '../../domain/entities/contact_entity.dart';
 import '../../domain/repositories/contacts_repository.dart';
@@ -11,6 +12,10 @@ class ContactsRepositoryImpl implements ContactsRepository {
   Future<List<ContactEntity>> getContacts({bool forceRefresh = false}) async {
     final rawContacts = forceRefresh ? await _contactService.refresh() : (_contactService.isLoaded ? _contactService.cachedContacts : await _contactService.getContacts());
 
-    return rawContacts.map((item) => ContactEntity(contactId: item['contactId']?.toString() ?? '', name: item['name']?.toString() ?? '', number: item['number']?.toString() ?? '')).toList();
+    return rawContacts.map((item) => ContactEntity(
+      contactId: StringUtils.safeUtf16(item['contactId']?.toString()),
+      name: StringUtils.safeUtf16(item['name']?.toString()),
+      number: StringUtils.safeUtf16(item['number']?.toString()),
+    )).toList();
   }
 }
