@@ -16,6 +16,7 @@ import android.provider.CallLog
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.telephony.SubscriptionManager
+import android.view.WindowManager
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -25,6 +26,21 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.google_dialer/incall"
     private val REQUEST_ID = 1
     private var proximityWakeLock: PowerManager.WakeLock? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        super.onCreate(savedInstanceState)
+    }
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -166,13 +182,23 @@ class MainActivity : FlutterActivity() {
                     "addContact" -> {
                         val number = call.argument<String>("number") ?: ""
                         val name = call.argument<String>("name") ?: ""
-                        val intent = Intent(Intent.ACTION_INSERT).apply {
-                            type = ContactsContract.Contacts.CONTENT_TYPE
-                            putExtra(ContactsContract.Intents.Insert.PHONE, number)
-                            if (name.isNotEmpty()) putExtra(ContactsContract.Intents.Insert.NAME, name)
+                        try {
+                            val intent = Intent(Intent.ACTION_INSERT_OR_EDIT).apply {
+                                type = ContactsContract.Contacts.CONTENT_ITEM_TYPE
+                                putExtra(ContactsContract.Intents.Insert.PHONE, number)
+                                if (name.isNotEmpty()) putExtra(ContactsContract.Intents.Insert.NAME, name)
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            val intent = Intent(Intent.ACTION_INSERT).apply {
+                                type = ContactsContract.Contacts.CONTENT_TYPE
+                                putExtra(ContactsContract.Intents.Insert.PHONE, number)
+                                if (name.isNotEmpty()) putExtra(ContactsContract.Intents.Insert.NAME, name)
+                            }
+                            startActivity(intent)
+                            result.success(true)
                         }
-                        startActivity(intent)
-                        result.success(true)
                     }
                     "openSms" -> {
                         val number = call.argument<String>("number") ?: ""

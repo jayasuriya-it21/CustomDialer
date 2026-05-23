@@ -36,6 +36,7 @@ class RecordingService {
 
   static const _metaKey = SharedPrefsKeys.callRecordingsMeta;
   static const _autoRecordKey = SharedPrefsKeys.autoRecordCalls;
+  static const _customPathKey = 'custom_recording_path';
 
   Future<bool> get autoRecordEnabled async {
     return AppStorage.instance.getValue<bool>(_autoRecordKey, false);
@@ -45,7 +46,26 @@ class RecordingService {
     await AppStorage.instance.putValue(_autoRecordKey, value);
   }
 
+  Future<String> get customRecordingPath async {
+    return AppStorage.instance.getValue<String>(_customPathKey, '');
+  }
+
+  Future<void> setCustomRecordingPath(String path) async {
+    await AppStorage.instance.putValue(_customPathKey, path);
+  }
+
   Future<String> get _recordingsDir async {
+    final customPath = await customRecordingPath;
+    if (customPath.isNotEmpty) {
+      final customDir = Directory(customPath);
+      if (!await customDir.exists()) {
+        try {
+          await customDir.create(recursive: true);
+        } catch (_) {}
+      }
+      return customPath;
+    }
+
     final dir = await getApplicationDocumentsDirectory();
     final recDir = Directory('${dir.path}/CallRecordings');
     if (!await recDir.exists()) {

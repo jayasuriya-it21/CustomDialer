@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../constants/app_routes.dart';
-import '../../features/call/presentation/screens/in_call_screen.dart';
-import '../../features/call/presentation/screens/incoming_call_screen.dart';
-import '../../features/dialer/presentation/screens/dialpad_screen_bloc.dart';
-import '../../features/search/presentation/screens/search_screen_bloc.dart';
-import '../../features/home/presentation/screens/home_shell_screen.dart';
-import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/call/screen/in_call_screen.dart';
+import '../../features/call/screen/incoming_call_screen.dart';
+import '../../features/dialer/screen/dialpad_screen_bloc.dart';
+import '../../features/search/screen/search_screen_bloc.dart';
+import '../../features/home/screen/home_shell_screen.dart';
+import '../../features/settings/screen/settings_screen.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 

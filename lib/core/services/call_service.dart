@@ -4,8 +4,8 @@ import '../routing/app_router.dart';
 import '../constants/method_channels.dart';
 import '../constants/ui_constants.dart';
 import '../utils/string_utils.dart';
-import '../../features/call/presentation/screens/incoming_call_screen.dart';
-import '../../features/call/presentation/screens/in_call_screen.dart';
+import '../../features/call/screen/incoming_call_screen.dart';
+import '../../features/call/screen/in_call_screen.dart';
 import 'contact_service.dart';
 
 class CallService {

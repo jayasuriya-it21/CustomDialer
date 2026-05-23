@@ -28,10 +28,10 @@ Future<void> main() async {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light));
 
-  // Load theme prefs synchronously before first frame so the app
-  // renders with the correct theme immediately.
+  // Load theme prefs asynchronously to prevent blocking the first frame.
+  // The app will render instantly with the default theme, then update smoothly.
   final themeCubit = getIt<ThemeCubit>();
-  await themeCubit.loadPreferences();
+  unawaited(themeCubit.loadPreferences());
 
   runApp(DialerApp(themeCubit: themeCubit));
 
@@ -61,6 +61,7 @@ Future<void> _requestEssentialPermissions() async {
     Permission.phone,
     Permission.contacts,
     Permission.microphone,
+    Permission.notification,
   ];
 
   final toRequest = <Permission>[];
@@ -73,6 +74,13 @@ Future<void> _requestEssentialPermissions() async {
 
   if (toRequest.isNotEmpty) {
     await toRequest.request();
+  }
+}
+
+class _BouncingScrollBehavior extends ScrollBehavior {
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 }
 
@@ -104,6 +112,7 @@ class DialerApp extends StatelessWidget {
                 ),
                 themeMode: themeState.themeMode,
                 routerConfig: appRouter,
+                scrollBehavior: _BouncingScrollBehavior(),
               );
             },
           );

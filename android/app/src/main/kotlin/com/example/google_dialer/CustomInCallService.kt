@@ -18,6 +18,26 @@ class CustomInCallService : InCallService() {
 
         fun setMethodChannel(channel: MethodChannel) {
             methodChannel = channel
+            val call = currentCall
+            if (call != null) {
+                mainHandler.post {
+                    val callerInfo = call.details?.handle?.schemeSpecificPart ?: "Unknown"
+                    val callState = call.state
+                    val stateStr = when (callState) {
+                        Call.STATE_RINGING -> "ringing"
+                        Call.STATE_DIALING -> "dialing"
+                        Call.STATE_CONNECTING -> "connecting"
+                        Call.STATE_ACTIVE -> "active"
+                        Call.STATE_HOLDING -> "holding"
+                        else -> "unknown"
+                    }
+                    methodChannel?.invokeMethod("onIncomingCall", mapOf(
+                        "number" to callerInfo,
+                        "state" to callState,
+                        "stateStr" to stateStr
+                    ))
+                }
+            }
         }
     }
 
@@ -44,10 +64,24 @@ class CustomInCallService : InCallService() {
                     Call.STATE_CONNECTING -> "connecting"
                     else -> "unknown"
                 }
+
+                val number = call.details?.handle?.schemeSpecificPart ?: "Unknown"
+                when (state) {
+                    Call.STATE_ACTIVE, Call.STATE_DIALING, Call.STATE_CONNECTING -> {
+                        CallNotificationManager.showOngoingCallNotification(this@CustomInCallService, number)
+                    }
+                    Call.STATE_RINGING -> {
+                        CallNotificationManager.showIncomingCallNotification(this@CustomInCallService, number)
+                    }
+                    Call.STATE_DISCONNECTED -> {
+                        CallNotificationManager.cancelNotification(this@CustomInCallService)
+                    }
+                }
+
                 methodChannel?.invokeMethod("onCallStateChanged", mapOf(
                     "state" to state,
                     "stateStr" to stateStr,
-                    "number" to (call.details?.handle?.schemeSpecificPart ?: "Unknown")
+                    "number" to number
                 ))
             }
         }
@@ -76,8 +110,16 @@ class CustomInCallService : InCallService() {
                 Call.STATE_RINGING -> "ringing"
                 Call.STATE_DIALING -> "dialing"
                 Call.STATE_CONNECTING -> "connecting"
+                Call.STATE_ACTIVE -> "active"
                 else -> "unknown"
             }
+
+            if (callState == Call.STATE_RINGING) {
+                CallNotificationManager.showIncomingCallNotification(this@CustomInCallService, callerInfo)
+            } else {
+                CallNotificationManager.showOngoingCallNotification(this@CustomInCallService, callerInfo)
+            }
+
             methodChannel?.invokeMethod("onIncomingCall", mapOf(
                 "number" to callerInfo,
                 "state" to callState,
@@ -85,13 +127,14 @@ class CustomInCallService : InCallService() {
             ))
         }
 
-        // Launch main activity to show call UI
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra("incoming", true)
-            putExtra("callerNumber", callerInfo)
+        if (callState != Call.STATE_RINGING) {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra("incoming", false)
+                putExtra("callerNumber", callerInfo)
+            }
+            startActivity(intent)
         }
-        startActivity(intent)
     }
 
     override fun onCallRemoved(call: Call) {
@@ -102,6 +145,12 @@ class CustomInCallService : InCallService() {
             currentCall = allCalls.lastOrNull()
         }
         mainHandler.post {
+            if (currentCall == null) {
+                CallNotificationManager.cancelNotification(this@CustomInCallService)
+            } else {
+                val nextNumber = currentCall?.details?.handle?.schemeSpecificPart ?: "Unknown"
+                CallNotificationManager.showOngoingCallNotification(this@CustomInCallService, nextNumber)
+            }
             methodChannel?.invokeMethod("onCallRemoved", null)
         }
     }
