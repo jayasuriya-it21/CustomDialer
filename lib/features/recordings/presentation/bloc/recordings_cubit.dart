@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../services/recording_service.dart';
+import '../../../../core/services/recording_service.dart';
 import 'recordings_state.dart';
 
 class RecordingsCubit extends Cubit<RecordingsState> {

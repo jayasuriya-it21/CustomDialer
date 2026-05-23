@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import '../core/constants/method_channels.dart';
-import '../core/utils/string_utils.dart';
+import '../constants/method_channels.dart';
+import '../utils/string_utils.dart';
 
 class ContactService {
   static const MethodChannel _channel = MethodChannel(MethodChannels.inCall);

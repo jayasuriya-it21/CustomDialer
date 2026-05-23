@@ -25,11 +25,11 @@ import '../../features/search/domain/repositories/search_repository.dart';
 import '../../features/search/domain/usecases/search_contacts_and_logs_usecase.dart';
 import '../../features/search/presentation/bloc/search_cubit.dart';
 import '../../features/settings/presentation/bloc/settings_cubit.dart';
-import '../../services/call_service.dart';
-import '../../services/contact_service.dart';
-import '../../services/favorites_service.dart';
-import '../../services/recording_service.dart';
-import '../../theme/theme_provider.dart';
+import '../services/call_service.dart';
+import '../services/contact_service.dart';
+import '../services/favorites_service.dart';
+import '../services/recording_service.dart';
+import '../theme/theme_cubit.dart';
 
 final GetIt getIt = GetIt.instance;
 
@@ -46,8 +46,8 @@ void setupServiceLocator() {
   if (!getIt.isRegistered<RecordingService>()) {
     getIt.registerLazySingleton<RecordingService>(RecordingService.new);
   }
-  if (!getIt.isRegistered<ThemeProvider>()) {
-    getIt.registerLazySingleton<ThemeProvider>(ThemeProvider.new);
+  if (!getIt.isRegistered<ThemeCubit>()) {
+    getIt.registerLazySingleton<ThemeCubit>(ThemeCubit.new);
   }
 
   if (!getIt.isRegistered<ContactsRepository>()) {
@@ -114,6 +114,6 @@ void setupServiceLocator() {
     getIt.registerFactory<RecordingsCubit>(() => RecordingsCubit(getIt<RecordingService>()));
   }
   if (!getIt.isRegistered<SettingsCubit>()) {
-    getIt.registerFactory<SettingsCubit>(() => SettingsCubit(getIt<ThemeProvider>(), getIt<CallService>(), getIt<RecordingService>()));
+    getIt.registerFactory<SettingsCubit>(() => SettingsCubit(getIt<ThemeCubit>(), getIt<CallService>(), getIt<RecordingService>()));
   }
 }

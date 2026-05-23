@@ -25,6 +25,9 @@ class ContactAvatar extends StatelessWidget {
     Color(0xFFFF6D00),
   ];
 
+  // Cached regex — prevents re-compilation on every build.
+  static final RegExp _whitespaceRe = RegExp(r'\s+');
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -33,7 +36,7 @@ class ContactAvatar extends StatelessWidget {
 
     String initials = '';
     if (name.isNotEmpty) {
-      final parts = name.trim().split(RegExp(r'\s+'));
+      final parts = name.trim().split(_whitespaceRe);
       initials = parts.map((p) => p.isNotEmpty ? p[0].toUpperCase() : '').take(2).join();
     }
     if (initials.isEmpty) initials = '#';
@@ -94,4 +97,3 @@ class ContactAvatar extends StatelessWidget {
     return avatar;
   }
 }
-

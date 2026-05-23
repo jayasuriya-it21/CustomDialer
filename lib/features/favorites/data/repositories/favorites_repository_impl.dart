@@ -1,4 +1,4 @@
-import '../../../../services/favorites_service.dart';
+import '../../../../core/services/favorites_service.dart';
 import '../../../contacts/domain/entities/contact_entity.dart';
 import '../../../contacts/domain/repositories/contacts_repository.dart';
 import '../../domain/repositories/favorites_repository.dart';

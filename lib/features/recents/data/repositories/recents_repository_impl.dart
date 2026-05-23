@@ -1,6 +1,6 @@
 import '../../../../core/utils/string_utils.dart';
-import '../../../../services/call_service.dart';
-import '../../../../services/favorites_service.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/services/favorites_service.dart';
 import '../../../contacts/domain/repositories/contacts_repository.dart';
 import '../../domain/entities/call_log_entity.dart';
 import '../../domain/entities/recents_payload.dart';

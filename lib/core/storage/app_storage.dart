@@ -7,18 +7,26 @@ class AppStorage {
   static final AppStorage instance = AppStorage._();
 
   Box<dynamic>? _box;
-  Future<void>? _initFuture;
+  Future<void>? _openFuture;
+  static bool _hiveInitialized = false;
+
+  /// Call once in main() before anything else touches storage.
+  static Future<void> init() async {
+    if (_hiveInitialized) return;
+    await Hive.initFlutter();
+    _hiveInitialized = true;
+  }
 
   Future<void> ensureReady() {
     if (_box != null && _box!.isOpen) {
       return Future.value();
     }
-    _initFuture ??= _init();
-    return _initFuture!;
+    _openFuture ??= _openBox();
+    return _openFuture!;
   }
 
-  Future<void> _init() async {
-    await Hive.initFlutter();
+  Future<void> _openBox() async {
+    if (!_hiveInitialized) await init();
     _box = await Hive.openBox<dynamic>(_boxName);
   }
 

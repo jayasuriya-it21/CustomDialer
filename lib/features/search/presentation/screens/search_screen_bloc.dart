@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../contacts/presentation/screens/contact_detail_screen.dart';
-import '../../../../widgets/contact_avatar.dart';
+import '../../../../core/widgets/contact_avatar.dart';
 import '../../domain/entities/search_result_entity.dart';
 import '../bloc/search_cubit.dart';
 import '../bloc/search_state.dart';

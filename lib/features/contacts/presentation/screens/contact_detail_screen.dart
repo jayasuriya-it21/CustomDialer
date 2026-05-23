@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../services/call_service.dart';
-import '../../../../services/contact_service.dart';
-import '../../../../services/favorites_service.dart';
-import '../../../../widgets/contact_avatar.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/services/contact_service.dart';
+import '../../../../core/services/favorites_service.dart';
+import '../../../../core/widgets/contact_avatar.dart';
 
 class ContactDetailScreen extends StatefulWidget {
   final String name;

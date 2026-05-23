@@ -1,27 +1,40 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../services/call_service.dart';
-import '../../../../services/recording_service.dart';
-import '../../../../theme/theme_provider.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/services/recording_service.dart';
+import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/theme/theme_state.dart';
 import 'settings_state.dart';
 
 class SettingsCubit extends Cubit<SettingsState> {
-  SettingsCubit(this._themeProvider, this._callService, this._recordingService) : super(SettingsState.initial());
+  SettingsCubit(this._themeCubit, this._callService, this._recordingService) : super(SettingsState.initial());
 
-  final ThemeProvider _themeProvider;
+  final ThemeCubit _themeCubit;
   final CallService _callService;
   final RecordingService _recordingService;
+  StreamSubscription<ThemeState>? _themeSub;
 
   void initialize() {
-    _themeProvider.addListener(_onThemeChanged);
+    // Listen to ThemeCubit stream instead of ChangeNotifier.
+    _themeSub = _themeCubit.stream.listen(_onThemeChanged);
     _load();
   }
 
   Future<void> _load() async {
     final autoRecord = await _recordingService.autoRecordEnabled;
     final sims = await _callService.getSimInfo();
-    emit(state.copyWith(autoRecord: autoRecord, sims: sims, themeMode: _themeProvider.themeMode, useDynamicColor: _themeProvider.useDynamicColor, seedColor: _themeProvider.seedColor, loaded: true));
+    final ts = _themeCubit.state;
+    emit(state.copyWith(
+      autoRecord: autoRecord,
+      sims: sims,
+      themeMode: ts.themeMode,
+      useDynamicColor: ts.useDynamicColor,
+      seedColor: ts.seedColor,
+      loaded: true,
+    ));
   }
 
   Future<void> setAutoRecord(bool value) async {
@@ -30,15 +43,15 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
-    await _themeProvider.setThemeMode(mode);
+    await _themeCubit.setThemeMode(mode);
   }
 
   Future<void> setUseDynamicColor(bool value) async {
-    await _themeProvider.setUseDynamicColor(value);
+    await _themeCubit.setUseDynamicColor(value);
   }
 
   Future<void> setSeedColor(Color color) async {
-    await _themeProvider.setSeedColor(color);
+    await _themeCubit.setSeedColor(color);
   }
 
   Future<void> openCallForwardingSettings() {
@@ -57,13 +70,17 @@ class SettingsCubit extends Cubit<SettingsState> {
     return _callService.openRingtonePicker();
   }
 
-  void _onThemeChanged() {
-    emit(state.copyWith(themeMode: _themeProvider.themeMode, useDynamicColor: _themeProvider.useDynamicColor, seedColor: _themeProvider.seedColor));
+  void _onThemeChanged(ThemeState ts) {
+    emit(state.copyWith(
+      themeMode: ts.themeMode,
+      useDynamicColor: ts.useDynamicColor,
+      seedColor: ts.seedColor,
+    ));
   }
 
   @override
   Future<void> close() {
-    _themeProvider.removeListener(_onThemeChanged);
+    _themeSub?.cancel();
     return super.close();
   }
 }

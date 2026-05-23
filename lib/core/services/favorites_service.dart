@@ -1,5 +1,5 @@
-import '../core/constants/shared_prefs_keys.dart';
-import '../core/storage/app_storage.dart';
+import '../constants/shared_prefs_keys.dart';
+import '../storage/app_storage.dart';
 
 class FavoritesService {
   static final FavoritesService _instance = FavoritesService._internal();

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../../widgets/contact_avatar.dart';
+import '../../../../core/widgets/contact_avatar.dart';
 import '../bloc/recordings_cubit.dart';
 import '../bloc/recordings_state.dart';
 

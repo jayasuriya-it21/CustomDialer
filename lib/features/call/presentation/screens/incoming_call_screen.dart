@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../../widgets/contact_avatar.dart';
+import '../../../../core/widgets/contact_avatar.dart';
 import '../bloc/incoming_call_cubit.dart';
 import '../bloc/incoming_call_state.dart';
 import 'in_call_screen.dart';

@@ -3,39 +3,65 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'config/app_router.dart';
+
 import 'core/constants/app_constants.dart';
 import 'core/di/service_locator.dart';
+import 'core/routing/app_router.dart';
+import 'core/services/call_service.dart';
+import 'core/services/contact_service.dart';
 import 'core/storage/app_storage.dart';
-import 'services/call_service.dart';
-import 'theme/theme_provider.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_cubit.dart';
+import 'core/theme/theme_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive FIRST — before anything reads storage.
+  await AppStorage.init();
+
   setupServiceLocator();
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: Brightness.light));
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light));
 
-  runApp(const DialerApp());
+  // Load theme prefs synchronously before first frame so the app
+  // renders with the correct theme immediately.
+  final themeCubit = getIt<ThemeCubit>();
+  await themeCubit.loadPreferences();
+
+  runApp(DialerApp(themeCubit: themeCubit));
+
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(_bootstrapApp());
   });
 }
 
 Future<void> _bootstrapApp() async {
-  // Keep launch path minimal: only start native call events.
+  // Start native call events.
   getIt<CallService>().listenToCallEvents();
 
   // Ask only essential permissions after first frame without blocking startup.
-  unawaited(_requestEssentialPermissions());
+  unawaited(() async {
+    await _requestEssentialPermissions();
+    if (await Permission.contacts.isGranted) {
+      await getIt<ContactService>().preload();
+    }
+  }());
 
   // Optional delayed storage warm-up for later reads.
   AppStorage.instance.ensureReady();
 }
 
 Future<void> _requestEssentialPermissions() async {
-  final permissions = <Permission>[Permission.phone, Permission.contacts, Permission.microphone];
+  final permissions = <Permission>[
+    Permission.phone,
+    Permission.contacts,
+    Permission.microphone,
+  ];
 
   final toRequest = <Permission>[];
   for (final permission in permissions) {
@@ -50,45 +76,39 @@ Future<void> _requestEssentialPermissions() async {
   }
 }
 
-class DialerApp extends StatefulWidget {
-  const DialerApp({super.key});
+class DialerApp extends StatelessWidget {
+  const DialerApp({super.key, required this.themeCubit});
 
-  @override
-  State<DialerApp> createState() => _DialerAppState();
-}
-
-class _DialerAppState extends State<DialerApp> {
-  final ThemeProvider _theme = getIt<ThemeProvider>();
-
-  @override
-  void initState() {
-    super.initState();
-    _theme.addListener(_onThemeChanged);
-  }
-
-  void _onThemeChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _theme.removeListener(_onThemeChanged);
-    super.dispose();
-  }
+  final ThemeCubit themeCubit;
 
   @override
   Widget build(BuildContext context) {
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        return MaterialApp.router(
-          title: AppConstants.appTitle,
-          debugShowCheckedModeBanner: false,
-          theme: _theme.buildLightTheme(dynamicScheme: lightDynamic).copyWith(pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()})),
-          darkTheme: _theme.buildDarkTheme(dynamicScheme: darkDynamic).copyWith(pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: CupertinoPageTransitionsBuilder()})),
-          themeMode: _theme.themeMode,
-          routerConfig: appRouter,
-        );
-      },
+    return BlocProvider<ThemeCubit>.value(
+      value: themeCubit,
+      child: BlocBuilder<ThemeCubit, ThemeState>(
+        builder: (context, themeState) {
+          return DynamicColorBuilder(
+            builder: (lightDynamic, darkDynamic) {
+              return MaterialApp.router(
+                title: AppConstants.appTitle,
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.buildLightTheme(
+                  seedColor: themeState.seedColor,
+                  useDynamicColor: themeState.useDynamicColor,
+                  dynamicScheme: lightDynamic,
+                ),
+                darkTheme: AppTheme.buildDarkTheme(
+                  seedColor: themeState.seedColor,
+                  useDynamicColor: themeState.useDynamicColor,
+                  dynamicScheme: darkDynamic,
+                ),
+                themeMode: themeState.themeMode,
+                routerConfig: appRouter,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
-import '../core/constants/shared_prefs_keys.dart';
-import '../core/storage/app_storage.dart';
+import '../constants/shared_prefs_keys.dart';
+import '../storage/app_storage.dart';
 
 class RecordingMeta {
   final String path;
@@ -56,7 +56,15 @@ class RecordingService {
 
   Future<String?> startRecording({String contactName = '', String number = ''}) async {
     try {
-      _recorder ??= AudioRecorder();
+      // Ensure recorder is in a clean state
+      if (_recorder != null) {
+        try {
+          await _recorder!.dispose();
+        } catch (_) {}
+        _recorder = null;
+      }
+      _recorder = AudioRecorder();
+
       if (!await _recorder!.hasPermission()) return null;
 
       final dir = await _recordingsDir;
@@ -73,14 +81,15 @@ class RecordingService {
       return _currentPath;
     } catch (e) {
       debugPrint("RecordingService start error: $e");
+      _isRecording = false;
       return null;
     }
   }
 
   Future<String?> stopRecording() async {
+    if (!_isRecording) return null;
     try {
-      if (!_isRecording || _recorder == null) return null;
-      final path = await _recorder!.stop();
+      final path = _recorder != null ? await _recorder!.stop() : null;
       _isRecording = false;
 
       if (path != null && _currentPath != null) {
@@ -96,6 +105,8 @@ class RecordingService {
     } catch (e) {
       debugPrint("RecordingService stop error: $e");
       _isRecording = false;
+      _currentPath = null;
+      _recordStartTime = null;
       return null;
     }
   }

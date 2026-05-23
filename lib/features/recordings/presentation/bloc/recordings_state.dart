@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../../services/recording_service.dart';
+import '../../../../core/services/recording_service.dart';
 
 class RecordingsState extends Equatable {
   const RecordingsState({required this.isLoading, required this.recordings, required this.playingIndex, required this.isPlaying});

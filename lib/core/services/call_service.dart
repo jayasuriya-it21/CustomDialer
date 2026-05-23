@@ -1,11 +1,11 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import '../config/app_router.dart';
-import '../core/constants/method_channels.dart';
-import '../core/constants/ui_constants.dart';
-import '../core/utils/string_utils.dart';
-import '../features/call/presentation/screens/incoming_call_screen.dart';
-import '../features/call/presentation/screens/in_call_screen.dart';
+import '../routing/app_router.dart';
+import '../constants/method_channels.dart';
+import '../constants/ui_constants.dart';
+import '../utils/string_utils.dart';
+import '../../features/call/presentation/screens/incoming_call_screen.dart';
+import '../../features/call/presentation/screens/in_call_screen.dart';
 import 'contact_service.dart';
 
 class CallService {

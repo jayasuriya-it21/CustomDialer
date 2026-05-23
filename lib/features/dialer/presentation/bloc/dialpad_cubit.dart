@@ -60,6 +60,9 @@ class DialpadCubit extends Cubit<DialpadState> {
     await _dialerRepository.openVideoCall(state.number);
   }
 
+  static final RegExp _sanitizeNumberRegExp = RegExp(r'[\s\-\(\)\+]');
+  static final RegExp _sanitizeNameRegExp = RegExp(r'[^a-zA-Z]');
+
   List<ContactEntity> _findMatches(String number) {
     if (!state.contactsLoaded || number.isEmpty) {
       return const <ContactEntity>[];
@@ -67,7 +70,7 @@ class DialpadCubit extends Cubit<DialpadState> {
 
     return state.allContacts
         .where((contact) {
-          if (contact.number.replaceAll(RegExp(r'[\s\-\(\)\+]'), '').contains(number)) {
+          if (contact.number.replaceAll(_sanitizeNumberRegExp, '').contains(number)) {
             return true;
           }
           return _matchesT9(contact.name, number);
@@ -80,7 +83,7 @@ class DialpadCubit extends Cubit<DialpadState> {
     if (name.isEmpty || digits.isEmpty) {
       return false;
     }
-    final cleanName = name.replaceAll(RegExp(r'[^a-zA-Z]'), '').toLowerCase();
+    final cleanName = name.replaceAll(_sanitizeNameRegExp, '').toLowerCase();
     if (cleanName.length < digits.length) {
       return false;
     }

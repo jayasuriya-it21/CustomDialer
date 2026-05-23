@@ -1,5 +1,5 @@
 import '../../../../core/utils/string_utils.dart';
-import '../../../../services/contact_service.dart';
+import '../../../../core/services/contact_service.dart';
 import '../../domain/entities/contact_entity.dart';
 import '../../domain/repositories/contacts_repository.dart';
 
@@ -10,7 +10,11 @@ class ContactsRepositoryImpl implements ContactsRepository {
 
   @override
   Future<List<ContactEntity>> getContacts({bool forceRefresh = false}) async {
-    final rawContacts = forceRefresh ? await _contactService.refresh() : (_contactService.isLoaded ? _contactService.cachedContacts : await _contactService.getContacts());
+    final rawContacts = forceRefresh
+        ? await _contactService.refresh()
+        : (_contactService.isLoaded
+            ? _contactService.cachedContacts
+            : await _contactService.refresh());
 
     return rawContacts.map((item) => ContactEntity(
       contactId: StringUtils.safeUtf16(item['contactId']?.toString()),

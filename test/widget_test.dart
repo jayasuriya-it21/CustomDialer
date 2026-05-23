@@ -9,12 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:google_dialer/core/di/service_locator.dart';
+import 'package:google_dialer/core/theme/theme_cubit.dart';
 import 'package:google_dialer/main.dart';
 
 void main() {
   testWidgets('DialerApp renders', (WidgetTester tester) async {
     setupServiceLocator();
-    await tester.pumpWidget(const DialerApp());
+    final themeCubit = ThemeCubit();
+    await tester.pumpWidget(DialerApp(themeCubit: themeCubit));
     await tester.pump();
 
     expect(find.byType(MaterialApp), findsOneWidget);

@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../services/call_service.dart';
-import '../../../../services/contact_service.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/services/contact_service.dart';
 import 'incoming_call_state.dart';
 
 class IncomingCallCubit extends Cubit<IncomingCallState> {

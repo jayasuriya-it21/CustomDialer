@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../contacts/presentation/screens/contact_detail_screen.dart';
-import '../../../../widgets/contact_avatar.dart';
+import '../../../../core/widgets/contact_avatar.dart';
 import '../bloc/dialpad_cubit.dart';
 import '../bloc/dialpad_state.dart';
 

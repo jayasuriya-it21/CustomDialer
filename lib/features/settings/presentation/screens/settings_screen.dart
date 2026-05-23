@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/service_locator.dart';
-import '../../../../theme/theme_provider.dart';
+import '../../../../core/theme/theme_cubit.dart';
 import '../../../recordings/presentation/screens/recordings_screen.dart';
 import '../bloc/settings_cubit.dart';
 import '../bloc/settings_state.dart';
@@ -507,7 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Wrap(
               spacing: 16,
               runSpacing: 16,
-              children: ThemeProvider.presetColors.map((color) {
+              children: ThemeCubit.presetColors.map((color) {
                 final isSelected = state.seedColor.toARGB32() == color.toARGB32();
                 return GestureDetector(
                   onTap: () {

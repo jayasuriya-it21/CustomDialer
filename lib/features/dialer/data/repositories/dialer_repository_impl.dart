@@ -1,5 +1,5 @@
-import '../../../../services/call_service.dart';
-import '../../../../services/contact_service.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/services/contact_service.dart';
 import '../../../contacts/domain/entities/contact_entity.dart';
 import '../../../contacts/domain/repositories/contacts_repository.dart';
 import '../../domain/entities/sim_info_entity.dart';

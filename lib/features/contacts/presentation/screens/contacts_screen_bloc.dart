@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/service_locator.dart';
 import 'contact_detail_screen.dart';
-import '../../../../services/call_service.dart';
-import '../../../../widgets/contact_avatar.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/widgets/contact_avatar.dart';
 import '../../domain/entities/contact_entity.dart';
 import '../bloc/contacts_bloc.dart';
 import '../bloc/contacts_event.dart';

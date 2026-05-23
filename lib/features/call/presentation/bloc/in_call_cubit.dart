@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../services/call_service.dart';
-import '../../../../services/recording_service.dart';
+import '../../../../core/services/call_service.dart';
+import '../../../../core/services/recording_service.dart';
 import 'in_call_state.dart';
 
 class InCallCubit extends Cubit<InCallState> {

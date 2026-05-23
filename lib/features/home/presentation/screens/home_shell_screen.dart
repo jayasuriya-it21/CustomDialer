@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_constants.dart';
-import '../../../core/constants/app_routes.dart';
-import '../../../core/constants/ui_constants.dart';
-import '../../../features/contacts/presentation/screens/contacts_screen_bloc.dart';
-import '../../../features/favorites/presentation/screens/favourites_screen_bloc.dart';
-import '../../../features/recents/presentation/screens/recents_screen_bloc.dart';
-import 'bloc/home_nav_cubit.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_routes.dart';
+import '../../../../core/constants/ui_constants.dart';
+import '../../../contacts/presentation/screens/contacts_screen_bloc.dart';
+import '../../../favorites/presentation/screens/favourites_screen_bloc.dart';
+import '../../../recents/presentation/screens/recents_screen_bloc.dart';
+import '../bloc/home_nav_cubit.dart';
 
 class HomeShellScreen extends StatefulWidget {
   const HomeShellScreen({super.key});
@@ -20,20 +20,8 @@ class HomeShellScreen extends StatefulWidget {
 
 class _HomeShellScreenState extends State<HomeShellScreen> {
   static const int _initialTab = 1;
-  final Set<int> _visitedTabs = <int>{};
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _visitedTabs.add(_initialTab);
-      });
-    });
-  }
+  // Initialize with the initial tab immediately to avoid an extra frame of placeholder.
+  final Set<int> _visitedTabs = <int>{_initialTab};
 
   Widget _buildTab(int index) {
     switch (index) {
@@ -54,7 +42,6 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     context.read<HomeNavCubit>().changeTab(index);
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
