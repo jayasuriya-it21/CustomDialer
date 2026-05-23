@@ -54,7 +54,7 @@ class _ContactsView extends StatelessWidget {
           );
         }
 
-        final grouped = _buildGroupedItems(contacts);
+        final grouped = state is ContactsLoaded ? state.groupedItems : <ContactListItem>[];
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -62,44 +62,121 @@ class _ContactsView extends StatelessWidget {
           },
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 4, bottom: 24),
             itemCount: grouped.length,
             itemBuilder: (_, i) {
               final item = grouped[i];
               if (item.isHeader) {
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                  child: Text(
-                    item.letter!,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          item.letter!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Divider(
+                          color: cs.outlineVariant.withValues(alpha: 0.15),
+                          thickness: 1,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }
 
               final contact = item.contact!;
               final heroTag = 'contacts_${contact.name}_${contact.number}';
+              final isDark = Theme.of(context).brightness == Brightness.dark;
 
-              return ListTile(
-                leading: ContactAvatar(name: contact.name, heroTag: heroTag),
-                title: Text(
-                  contact.name,
-                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(contact.number, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ContactDetailScreen(name: contact.name, number: contact.number, heroTag: heroTag),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: cs.surfaceContainerLow,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.15),
+                      width: 1,
                     ),
-                  );
-                },
-                trailing: IconButton(
-                  icon: Icon(Icons.call_rounded, size: 20, color: cs.primary),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => callService.makeCall(contact.number),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ContactDetailScreen(name: contact.name, number: contact.number, heroTag: heroTag),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          ContactAvatar(name: contact.name, heroTag: heroTag, radius: 22),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  contact.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.5,
+                                    color: cs.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  contact.number,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => callService.makeCall(contact.number),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: cs.primary.withValues(alpha: 0.08),
+                              ),
+                              child: Icon(
+                                Icons.call_rounded,
+                                size: 16,
+                                color: cs.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
@@ -108,35 +185,4 @@ class _ContactsView extends StatelessWidget {
       },
     );
   }
-
-  List<_ListItem> _buildGroupedItems(List<ContactEntity> contacts) {
-    final grouped = <String, List<ContactEntity>>{};
-    for (final contact in contacts) {
-      final letter = contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '#';
-      grouped.putIfAbsent(letter, () => []).add(contact);
-    }
-
-    final keys = grouped.keys.toList()..sort();
-    final items = <_ListItem>[];
-    for (final key in keys) {
-      items.add(_ListItem.header(key));
-      for (final contact in grouped[key]!) {
-        items.add(_ListItem.contact(contact));
-      }
-    }
-
-    return items;
-  }
-}
-
-class _ListItem {
-  const _ListItem._({this.letter, this.contact});
-
-  const _ListItem.header(String letter) : this._(letter: letter);
-  const _ListItem.contact(ContactEntity contact) : this._(contact: contact);
-
-  final String? letter;
-  final ContactEntity? contact;
-
-  bool get isHeader => letter != null;
 }

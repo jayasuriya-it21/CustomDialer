@@ -23,6 +23,9 @@ class _DialpadView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final height = MediaQuery.of(context).size.height;
+    final keySize = height < 720 ? 66.0 : 76.0;
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -35,12 +38,19 @@ class _DialpadView extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Row(
                     children: [
-                      IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context), tooltip: 'Back'),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        onPressed: () => Navigator.pop(context),
+                        tooltip: 'Back',
+                      ),
                       const Spacer(),
                       if (state.sims.length > 1)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: cs.primaryContainer.withValues(alpha: 0.5)),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            color: cs.primaryContainer.withValues(alpha: 0.5),
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -61,8 +71,18 @@ class _DialpadView extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
                   child: AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 150),
-                    style: TextStyle(fontSize: state.number.length > 14 ? 26 : 34, fontWeight: FontWeight.w300, letterSpacing: 1.5, color: cs.onSurface),
-                    child: Text(state.number.isEmpty ? '\u200B' : _formatNum(state.number), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    style: TextStyle(
+                      fontSize: state.number.length > 14 ? 26 : 34,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 1.5,
+                      color: cs.onSurface,
+                    ),
+                    child: Text(
+                      state.number.isEmpty ? '\u200B' : _formatNum(state.number),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 if (state.matchingContacts.isNotEmpty)
@@ -74,29 +94,53 @@ class _DialpadView extends StatelessWidget {
                         final c = state.matchingContacts[i];
                         final heroTag = 'dialpad_${c.name}_${c.number}';
 
-                        return ListTile(
-                          dense: true,
-                          leading: ContactAvatar(name: c.name, radius: 18, heroTag: heroTag),
-                          title: Text(
-                            c.name,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(c.number, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ContactDetailScreen(name: c.name, number: c.number, heroTag: heroTag),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            color: cs.surfaceContainerLow,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.15),
+                                width: 1,
                               ),
-                            );
-                          },
-                          trailing: IconButton(
-                            icon: Icon(Icons.call_rounded, size: 18, color: cs.primary),
-                            visualDensity: VisualDensity.compact,
-                            tooltip: 'Call',
-                            onPressed: () => context.read<DialpadCubit>().makeCallTo(c.number),
+                            ),
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                              leading: ContactAvatar(name: c.name, radius: 18, heroTag: heroTag),
+                              title: Text(
+                                c.name,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(c.number, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ContactDetailScreen(name: c.name, number: c.number, heroTag: heroTag),
+                                  ),
+                                );
+                              },
+                              trailing: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  context.read<DialpadCubit>().makeCallTo(c.number);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: cs.primary.withValues(alpha: 0.08),
+                                  ),
+                                  child: Icon(Icons.call_rounded, size: 16, color: cs.primary),
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -109,7 +153,10 @@ class _DialpadView extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.only(top: 4, bottom: 8),
                         child: TextButton.icon(
-                          onPressed: () => context.read<DialpadCubit>().addToContacts(),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            context.read<DialpadCubit>().addToContacts();
+                          },
                           icon: Icon(Icons.person_add_rounded, size: 16, color: cs.primary),
                           label: Text('Add to contacts', style: TextStyle(color: cs.primary, fontSize: 14)),
                         ),
@@ -122,10 +169,10 @@ class _DialpadView extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      _row(context, ['1', '2', '3'], ['', 'ABC', 'DEF']),
-                      _row(context, ['4', '5', '6'], ['GHI', 'JKL', 'MNO']),
-                      _row(context, ['7', '8', '9'], ['PQRS', 'TUV', 'WXYZ']),
-                      _row(context, ['*', '0', '#'], ['', '+', '']),
+                      _row(context, ['1', '2', '3'], ['', 'ABC', 'DEF'], keySize),
+                      _row(context, ['4', '5', '6'], ['GHI', 'JKL', 'MNO'], keySize),
+                      _row(context, ['7', '8', '9'], ['PQRS', 'TUV', 'WXYZ'], keySize),
+                      _row(context, ['*', '0', '#'], ['', '+', ''], keySize),
                     ],
                   ),
                 ),
@@ -136,11 +183,15 @@ class _DialpadView extends StatelessWidget {
                     children: [
                       SizedBox(
                         width: 56,
+                        height: 56,
                         child: state.number.isNotEmpty
                             ? IconButton(
                                 icon: Icon(Icons.videocam_rounded, color: cs.primary),
                                 tooltip: 'Video call',
-                                onPressed: () => context.read<DialpadCubit>().openVideoCall(),
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  context.read<DialpadCubit>().openVideoCall();
+                                },
                               )
                             : IconButton(
                                 icon: Icon(Icons.voicemail_rounded, color: cs.onSurfaceVariant),
@@ -148,18 +199,32 @@ class _DialpadView extends StatelessWidget {
                                 onPressed: () {},
                               ),
                       ),
-                      FloatingActionButton.large(
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          context.read<DialpadCubit>().makeCall();
-                        },
-                        elevation: 0,
-                        backgroundColor: cs.tertiaryContainer,
-                        foregroundColor: cs.onTertiaryContainer,
-                        child: const Icon(Icons.call_rounded, size: 36),
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: cs.tertiary.withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: FloatingActionButton.large(
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            context.read<DialpadCubit>().makeCall();
+                          },
+                          elevation: 0,
+                          backgroundColor: cs.tertiaryContainer,
+                          foregroundColor: cs.onTertiaryContainer,
+                          shape: const CircleBorder(),
+                          child: const Icon(Icons.call_rounded, size: 36),
+                        ),
                       ),
                       SizedBox(
                         width: 56,
+                        height: 56,
                         child: state.number.isNotEmpty
                             ? GestureDetector(
                                 onLongPress: () {
@@ -167,8 +232,8 @@ class _DialpadView extends StatelessWidget {
                                   context.read<DialpadCubit>().onClear();
                                 },
                                 child: IconButton(
-                                  icon: Icon(Icons.backspace_outlined, color: cs.onSurfaceVariant),
-                                  iconSize: 24,
+                                  icon: Icon(Icons.backspace_rounded, color: cs.onSurfaceVariant),
+                                  iconSize: 22,
                                   tooltip: 'Delete',
                                   onPressed: () {
                                     HapticFeedback.lightImpact();
@@ -199,15 +264,20 @@ class _DialpadView extends StatelessWidget {
     return n;
   }
 
-  Widget _row(BuildContext context, List<String> digits, List<String> letters) {
+  Widget _row(BuildContext context, List<String> digits, List<String> letters, double keySize) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(3, (i) => _key(context, digits[i], letters[i]))),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(3, (i) => _key(context, digits[i], letters[i], keySize)),
+      ),
     );
   }
 
-  Widget _key(BuildContext context, String digit, String letters) {
+  Widget _key(BuildContext context, String digit, String letters, double keySize) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Semantics(
       label: digit == '*'
           ? 'Star'
@@ -215,32 +285,54 @@ class _DialpadView extends StatelessWidget {
           ? 'Hash'
           : 'Digit $digit${letters.isNotEmpty ? ', $letters' : ''}',
       button: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            context.read<DialpadCubit>().onDigitPressed(digit);
-          },
-          onLongPress: digit == '0'
-              ? () {
-                  HapticFeedback.lightImpact();
-                  context.read<DialpadCubit>().onDigitPressed('+');
-                }
-              : null,
-          borderRadius: BorderRadius.circular(40),
-          splashColor: cs.primary.withValues(alpha: 0.08),
-          child: SizedBox(
-            width: 80,
-            height: 64,
+      child: Container(
+        width: keySize,
+        height: keySize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: cs.surfaceContainerLow,
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.15),
+            width: 1,
+          ),
+        ),
+        child: ClipOval(
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              context.read<DialpadCubit>().onDigitPressed(digit);
+            },
+            onLongPress: digit == '0'
+                ? () {
+                    HapticFeedback.lightImpact();
+                    context.read<DialpadCubit>().onDigitPressed('+');
+                  }
+                : null,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   digit,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w400, color: cs.onSurface),
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w400,
+                    color: cs.onSurface,
+                    height: 1.15,
+                  ),
                 ),
-                if (letters.isNotEmpty) Text(letters, style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5, color: cs.onSurfaceVariant)),
+                if (letters.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Text(
+                      letters,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -53,7 +53,11 @@ class _SearchScreenBlocState extends State<SearchScreenBloc> {
                         controller: _controller,
                         focusNode: _focusNode,
                         hintText: AppConstants.searchHint,
-                        leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context), tooltip: 'Back'),
+                        leading: IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: () => Navigator.pop(context),
+                          tooltip: 'Back',
+                        ),
                         onChanged: (value) {
                           context.read<SearchCubit>().queryChanged(value);
                         },
@@ -70,11 +74,18 @@ class _SearchScreenBlocState extends State<SearchScreenBloc> {
                           const SizedBox(width: 8),
                         ],
                         elevation: const WidgetStatePropertyAll(0),
-                        backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+                        backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerLow),
+                        overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.05)),
+                        shape: WidgetStatePropertyAll(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.15), width: 1.2),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const Divider(height: 1),
+                  const SizedBox(height: 4),
                   Expanded(child: _buildBody(context, state)),
                 ],
               ),

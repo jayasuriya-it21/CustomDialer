@@ -55,11 +55,17 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(statusBarColor: Colors.transparent, statusBarIconBrightness: cs.brightness == Brightness.dark ? Brightness.light : Brightness.dark, systemNavigationBarColor: cs.surfaceContainerLow),
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: cs.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: cs.surface,
+        systemNavigationBarIconBrightness: cs.brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+      ),
       child: BlocProvider(
         create: (_) => HomeNavCubit(),
         child: Scaffold(
@@ -72,20 +78,42 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
                     tag: 'search_bar_hero',
                     child: SearchBar(
                       hintText: AppConstants.searchHint,
-                      leading: const Icon(Icons.search_rounded),
+                      leading: Icon(Icons.search_rounded, color: cs.onSurfaceVariant.withValues(alpha: 0.8)),
                       trailing: [
                         GestureDetector(
                           onTap: () => context.push(AppRoutes.settings),
-                          child: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: cs.primary,
-                            child: Icon(Icons.person_rounded, size: 18, color: cs.onPrimary),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [cs.primary, cs.secondary],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: cs.primary.withValues(alpha: 0.25),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: Icon(Icons.person_rounded, size: 16, color: cs.onPrimary),
                           ),
                         ),
                         const SizedBox(width: 8),
                       ],
                       elevation: const WidgetStatePropertyAll(0),
-                      backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+                      backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerLow),
+                      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.05)),
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.15), width: 1.2),
+                        ),
+                      ),
                       onTap: () => context.push(AppRoutes.search),
                     ),
                   ),
@@ -113,18 +141,63 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
           ),
           bottomNavigationBar: BlocBuilder<HomeNavCubit, int>(
             builder: (context, currentIndex) {
-              return NavigationBar(
-                selectedIndex: currentIndex,
-                onDestinationSelected: (index) => _onDestinationSelected(context, index),
-                destinations: const [
-                  NavigationDestination(icon: Icon(Icons.star_outline_rounded), selectedIcon: Icon(Icons.star_rounded), label: 'Favourites'),
-                  NavigationDestination(icon: Icon(Icons.access_time_rounded), selectedIcon: Icon(Icons.access_time_filled_rounded), label: 'Recents'),
-                  NavigationDestination(icon: Icon(Icons.people_outline_rounded), selectedIcon: Icon(Icons.people_rounded), label: 'Contacts'),
-                ],
+              return Container(
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  border: Border(
+                    top: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.12),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: NavigationBar(
+                  selectedIndex: currentIndex,
+                  onDestinationSelected: (index) => _onDestinationSelected(context, index),
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.star_outline_rounded),
+                      selectedIcon: Icon(Icons.star_rounded),
+                      label: 'Favourites',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.access_time_rounded),
+                      selectedIcon: Icon(Icons.access_time_filled_rounded),
+                      label: 'Recents',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.people_outline_rounded),
+                      selectedIcon: Icon(Icons.people_rounded),
+                      label: 'Contacts',
+                    ),
+                  ],
+                ),
               );
             },
           ),
-          floatingActionButton: FloatingActionButton(onPressed: () => context.push(AppRoutes.dialpad), child: const Icon(Icons.dialpad_rounded, size: 26)),
+          floatingActionButton: Container(
+            margin: const EdgeInsets.only(bottom: 8, right: 4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.35),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: FloatingActionButton(
+              onPressed: () => context.push(AppRoutes.dialpad),
+              backgroundColor: cs.primary,
+              foregroundColor: cs.onPrimary,
+              elevation: 0,
+              highlightElevation: 0,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.dialpad_rounded, size: 26),
+            ),
+          ),
         ),
       ),
     );

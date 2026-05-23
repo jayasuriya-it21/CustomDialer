@@ -2,6 +2,18 @@ import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/contact_entity.dart';
 
+class ContactListItem {
+  const ContactListItem._({this.letter, this.contact});
+
+  const ContactListItem.header(String letter) : this._(letter: letter);
+  const ContactListItem.contact(ContactEntity contact) : this._(contact: contact);
+
+  final String? letter;
+  final ContactEntity? contact;
+
+  bool get isHeader => letter != null;
+}
+
 abstract class ContactsState extends Equatable {
   const ContactsState();
 
@@ -18,12 +30,13 @@ class ContactsLoading extends ContactsState {
 }
 
 class ContactsLoaded extends ContactsState {
-  const ContactsLoaded(this.contacts);
+  const ContactsLoaded(this.contacts, {this.groupedItems = const []});
 
   final List<ContactEntity> contacts;
+  final List<ContactListItem> groupedItems;
 
   @override
-  List<Object?> get props => [contacts];
+  List<Object?> get props => [contacts, groupedItems];
 }
 
 class ContactsError extends ContactsState {

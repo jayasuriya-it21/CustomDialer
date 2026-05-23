@@ -38,28 +38,51 @@ class ContactAvatar extends StatelessWidget {
     }
     if (initials.isEmpty) initials = '#';
 
-    Widget avatar;
-
-    if (photoUri != null && photoUri!.isNotEmpty) {
-      avatar = CircleAvatar(
-        radius: radius,
-        backgroundImage: NetworkImage(photoUri!),
-        backgroundColor: color.withValues(alpha: isDark ? 0.3 : 0.15),
-      );
-    } else {
-      avatar = CircleAvatar(
-        radius: radius,
-        backgroundColor: color.withValues(alpha: isDark ? 0.25 : 0.12),
-        child: Text(
-          initials,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w600,
-            fontSize: radius * 0.7,
-          ),
+    final avatar = Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: isDark ? 0.35 : 0.18),
+            color.withValues(alpha: isDark ? 0.15 : 0.06),
+          ],
         ),
-      );
-    }
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.4 : 0.22),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
+        image: photoUri != null && photoUri!.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(photoUri!),
+                fit: BoxFit.cover,
+              )
+            : null,
+      ),
+      child: photoUri == null || photoUri!.isEmpty
+          ? Center(
+              child: Text(
+                initials,
+                style: TextStyle(
+                  color: isDark ? color.withValues(alpha: 0.95) : color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: radius * 0.72,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            )
+          : null,
+    );
 
     if (heroTag != null) {
       return Hero(

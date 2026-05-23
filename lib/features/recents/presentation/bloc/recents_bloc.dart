@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../domain/entities/call_log_entity.dart';
 import '../../domain/usecases/delete_call_log_usecase.dart';
@@ -22,14 +24,17 @@ class RecentsBloc extends Bloc<RecentsEvent, RecentsState> {
     try {
       final payload = await _getRecentsUseCase(forceRefresh: event.forceRefresh);
       final visible = _applyFilter(payload.logs, state.filter);
-      emit(state.copyWith(isLoading: false, allLogs: payload.logs, visibleLogs: visible, favorites: payload.favorites, clearError: true, clearDeleted: true));
+      final grouped = await compute(_groupLogs, visible);
+      emit(state.copyWith(isLoading: false, allLogs: payload.logs, visibleLogs: visible, groupedLogs: grouped, favorites: payload.favorites, clearError: true, clearDeleted: true));
     } catch (_) {
       emit(state.copyWith(isLoading: false, error: 'Unable to load recents', clearDeleted: true));
     }
   }
 
-  void _onFilterChanged(RecentsFilterChanged event, Emitter<RecentsState> emit) {
-    emit(state.copyWith(filter: event.filter, visibleLogs: _applyFilter(state.allLogs, event.filter), clearDeleted: true));
+  Future<void> _onFilterChanged(RecentsFilterChanged event, Emitter<RecentsState> emit) async {
+    final visible = _applyFilter(state.allLogs, event.filter);
+    final grouped = await compute(_groupLogs, visible);
+    emit(state.copyWith(filter: event.filter, visibleLogs: visible, groupedLogs: grouped, clearDeleted: true));
   }
 
   Future<void> _onDeleteRequested(RecentsDeleteRequested event, Emitter<RecentsState> emit) async {
@@ -39,23 +44,57 @@ class RecentsBloc extends Bloc<RecentsEvent, RecentsState> {
     }
 
     final updated = List<CallLogEntity>.from(state.allLogs)..remove(event.log);
+    final visible = _applyFilter(updated, state.filter);
+    final grouped = await compute(_groupLogs, visible);
 
-    emit(state.copyWith(allLogs: updated, visibleLogs: _applyFilter(updated, state.filter), lastDeletedLog: event.log, lastDeletedIndex: existingIndex));
+    emit(state.copyWith(allLogs: updated, visibleLogs: visible, groupedLogs: grouped, lastDeletedLog: event.log, lastDeletedIndex: existingIndex));
 
     await _deleteCallLogUseCase(event.log.id);
   }
 
-  void _onRestoreRequested(RecentsRestoreRequested event, Emitter<RecentsState> emit) {
+  Future<void> _onRestoreRequested(RecentsRestoreRequested event, Emitter<RecentsState> emit) async {
     final updated = List<CallLogEntity>.from(state.allLogs);
     final index = event.index.clamp(0, updated.length);
     updated.insert(index, event.log);
-    emit(state.copyWith(allLogs: updated, visibleLogs: _applyFilter(updated, state.filter), clearDeleted: true));
+    final visible = _applyFilter(updated, state.filter);
+    final grouped = await compute(_groupLogs, visible);
+    emit(state.copyWith(allLogs: updated, visibleLogs: visible, groupedLogs: grouped, clearDeleted: true));
   }
 
-  List<CallLogEntity> _applyFilter(List<CallLogEntity> logs, RecentsFilter filter) {
+  static List<CallLogEntity> _applyFilter(List<CallLogEntity> logs, RecentsFilter filter) {
     if (filter == RecentsFilter.missed) {
       return logs.where((log) => log.isMissed).toList();
     }
     return List<CallLogEntity>.from(logs);
+  }
+
+  static List<RecentItem> _groupLogs(List<CallLogEntity> logs) {
+    final List<RecentItem> items = [];
+    String? currentHeader;
+
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final yesterdayDate = todayDate.subtract(const Duration(days: 1));
+
+    for (final log in logs) {
+      final date = DateTime.fromMillisecondsSinceEpoch(log.date);
+      final comparisonDate = DateTime(date.year, date.month, date.day);
+
+      String header;
+      if (comparisonDate == todayDate) {
+        header = 'Today';
+      } else if (comparisonDate == yesterdayDate) {
+        header = 'Yesterday';
+      } else {
+        header = DateFormat('MMMM yyyy').format(date);
+      }
+
+      if (currentHeader != header) {
+        currentHeader = header;
+        items.add(HeaderItem(header));
+      }
+      items.add(LogItem(log));
+    }
+    return items;
   }
 }

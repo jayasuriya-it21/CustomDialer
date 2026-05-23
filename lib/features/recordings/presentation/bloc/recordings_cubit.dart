@@ -16,6 +16,8 @@ class RecordingsCubit extends Cubit<RecordingsState> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   StreamSubscription<PlayerState>? _playerSub;
 
+  AudioPlayer get audioPlayer => _audioPlayer;
+
   Future<void> initialize() async {
     await loadRecordings();
   }

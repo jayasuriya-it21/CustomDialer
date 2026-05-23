@@ -70,101 +70,290 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: cs.surface,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          SliverAppBar.large(
-            expandedHeight: 200,
+          SliverAppBar(
+            expandedHeight: 280,
             pinned: true,
-            backgroundColor: cs.surfaceContainerLow,
+            stretch: true,
+            elevation: 0,
+            scrolledUnderElevation: 2,
+            backgroundColor: cs.surface,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             actions: [
               IconButton(
-                icon: Icon(_isFavorite ? Icons.star_rounded : Icons.star_outline_rounded, color: _isFavorite ? Colors.amber : cs.onSurfaceVariant),
+                icon: Icon(
+                  _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: _isFavorite ? Colors.amber : cs.onSurface,
+                ),
                 onPressed: _toggleFavorite,
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(widget.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-              centerTitle: false,
+            flexibleSpace: LayoutBuilder(
+              builder: (context, constraints) {
+                final double top = constraints.biggest.height;
+                final double statusBarHeight = MediaQuery.of(context).padding.top;
+                final double collapsedHeight = kToolbarHeight + statusBarHeight;
+                final double percent = ((top - collapsedHeight) / (280 - collapsedHeight)).clamp(0.0, 1.0);
+
+                return FlexibleSpaceBar(
+                  centerTitle: true,
+                  titlePadding: EdgeInsets.only(
+                    bottom: 16 + (percent * 10),
+                    left: 56,
+                    right: 56,
+                  ),
+                  title: Opacity(
+                    opacity: (1.0 - percent).clamp(0.0, 1.0),
+                    child: Text(
+                      widget.name,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  background: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          cs.primaryContainer.withValues(alpha: 0.25),
+                          cs.surface,
+                        ],
+                      ),
+                    ),
+                    child: Opacity(
+                      opacity: percent,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(height: statusBarHeight + 16),
+                          ContactAvatar(
+                            name: widget.name,
+                            radius: 54,
+                            heroTag: widget.heroTag,
+                          ),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              widget.name,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: cs.onSurface,
+                                letterSpacing: -0.5,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.number,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: cs.onSurfaceVariant,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-                ContactAvatar(name: widget.name, radius: 48, heroTag: widget.heroTag),
-                const SizedBox(height: 16),
-
-                // Quick actions
+                // Quick actions capsule card
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _quickAction(Icons.call_rounded, 'Call', const Color(0xFF34A853), () => _callService.makeCall(widget.number)),
-                      _quickAction(Icons.message_rounded, 'Text', cs.primary, () => _contactService.openSms(widget.number)),
-                      _quickAction(Icons.videocam_rounded, 'Video', cs.primary, () => _contactService.openVideoCall(widget.number)),
-                      _quickAction(Icons.chat_rounded, 'WhatsApp', const Color(0xFF25D366), () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final success = await _contactService.openWhatsApp(widget.number);
-                        if (success) {
-                          return;
-                        }
-                        if (!mounted) {
-                          return;
-                        }
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: const Text('WhatsApp is not installed'),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-                const Divider(indent: 16, endIndent: 16),
-
-                // Phone numbers section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Contact info',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Card(
+                    elevation: 0,
+                    color: cs.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _quickAction(Icons.call_rounded, 'Call', cs.primary, () => _callService.makeCall(widget.number)),
+                          _quickAction(Icons.message_rounded, 'Text', cs.primary, () => _contactService.openSms(widget.number)),
+                          _quickAction(Icons.videocam_rounded, 'Video', cs.primary, () => _contactService.openVideoCall(widget.number)),
+                          _quickAction(Icons.chat_rounded, 'WhatsApp', const Color(0xFF25D366), () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final success = await _contactService.openWhatsApp(widget.number);
+                            if (success) {
+                              return;
+                            }
+                            if (!mounted) {
+                              return;
+                            }
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: const Text('WhatsApp is not installed'),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
                     ),
                   ),
                 ),
 
-                if (_isLoading)
-                  const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2))
-                else
-                  ..._phoneNumbers.map((phone) {
-                    final num = phone['number'] as String? ?? '';
-                    final type = phone['type'] as String? ?? 'Mobile';
-                    return ListTile(
-                      leading: Icon(Icons.call_rounded, color: cs.primary),
-                      title: Text(num, style: const TextStyle(fontSize: 16)),
-                      subtitle: Text(type, style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.call_rounded, color: cs.primary, size: 20),
-                            onPressed: () => _callService.makeCall(num),
+                const SizedBox(height: 12),
+
+                // Phone numbers section inside elegant card
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 8),
+                        child: Text(
+                          'Contact info',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                            letterSpacing: 0.5,
                           ),
-                          IconButton(
-                            icon: Icon(Icons.message_rounded, color: cs.primary, size: 20),
-                            onPressed: () => _contactService.openSms(num),
-                          ),
-                        ],
+                        ),
                       ),
-                      onTap: () => _callService.makeCall(num),
-                    );
-                  }),
+                      Card(
+                        elevation: 0,
+                        color: cs.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.4),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Column(
+                            children: [
+                              if (_isLoading)
+                                const Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Center(
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              else if (_phoneNumbers.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Center(
+                                    child: Text(
+                                      'No phone numbers found',
+                                      style: TextStyle(color: cs.onSurfaceVariant),
+                                    ),
+                                  ),
+                                )
+                              else
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  padding: EdgeInsets.zero,
+                                  itemCount: _phoneNumbers.length,
+                                  separatorBuilder: (context, index) => Divider(
+                                    height: 1,
+                                    indent: 56,
+                                    endIndent: 16,
+                                    color: cs.outlineVariant.withValues(alpha: 0.3),
+                                  ),
+                                  itemBuilder: (context, index) {
+                                    final phone = _phoneNumbers[index];
+                                    final num = phone['number'] as String? ?? '';
+                                    final type = phone['type'] as String? ?? 'Mobile';
+                                    return ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: cs.primary.withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(Icons.phone_outlined, color: cs.primary, size: 20),
+                                      ),
+                                      title: Text(
+                                        num,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: cs.onSurface,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        type,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: cs.primary.withValues(alpha: 0.08),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(Icons.call_rounded, color: cs.primary, size: 18),
+                                            ),
+                                            onPressed: () => _callService.makeCall(num),
+                                          ),
+                                          IconButton(
+                                            icon: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: cs.primary.withValues(alpha: 0.08),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(Icons.message_rounded, color: cs.primary, size: 18),
+                                            ),
+                                            onPressed: () => _contactService.openSms(num),
+                                          ),
+                                        ],
+                                      ),
+                                      onTap: () => _callService.makeCall(num),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 100),
               ],
@@ -176,18 +365,41 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
   }
 
   Widget _quickAction(IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.12)),
-            child: Icon(icon, color: color, size: 22),
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: isDark ? 0.18 : 0.08),
+                  border: Border.all(
+                    color: color.withValues(alpha: isDark ? 0.3 : 0.15),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ],
+        ),
       ),
     );
   }

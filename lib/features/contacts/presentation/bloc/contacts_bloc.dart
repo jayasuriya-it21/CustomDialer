@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/usecases/get_contacts_usecase.dart';
+import '../../domain/entities/contact_entity.dart';
 import 'contacts_event.dart';
 import 'contacts_state.dart';
 
@@ -15,9 +17,32 @@ class ContactsBloc extends Bloc<ContactsEvent, ContactsState> {
     emit(const ContactsLoading());
     try {
       final contacts = await _getContactsUseCase(forceRefresh: event.forceRefresh);
-      emit(ContactsLoaded(contacts));
+      
+      // Offload grouping to an isolate to prevent UI stutter
+      final groupedItems = await compute(_buildGroupedItems, contacts);
+      
+      emit(ContactsLoaded(contacts, groupedItems: groupedItems));
     } catch (_) {
       emit(const ContactsError('Unable to load contacts'));
     }
+  }
+
+  static List<ContactListItem> _buildGroupedItems(List<ContactEntity> contacts) {
+    final grouped = <String, List<ContactEntity>>{};
+    for (final contact in contacts) {
+      final letter = contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '#';
+      grouped.putIfAbsent(letter, () => []).add(contact);
+    }
+
+    final keys = grouped.keys.toList()..sort();
+    final items = <ContactListItem>[];
+    for (final key in keys) {
+      items.add(ContactListItem.header(key));
+      for (final contact in grouped[key]!) {
+        items.add(ContactListItem.contact(contact));
+      }
+    }
+
+    return items;
   }
 }

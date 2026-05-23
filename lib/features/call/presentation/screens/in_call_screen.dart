@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+
 import '../../../../core/di/service_locator.dart';
+import '../../../../widgets/contact_avatar.dart';
 import '../bloc/in_call_cubit.dart';
 import '../bloc/in_call_state.dart';
 
@@ -144,9 +146,17 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
     return BlocProvider.value(
       value: _inCallCubit,
       child: Scaffold(
-        body: DecoratedBox(
+        body: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1A1A2E), Color(0xFF0F0F0F), Color(0xFF0A0A0A)], stops: [0.0, 0.5, 1.0]),
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.4,
+              colors: [
+                Color(0xFF1E2638), // Deep slate blue highlight
+                Color(0xFF0E121E), // Dark indigo gray
+                Color(0xFF07080D), // Pure obsidian dark
+              ],
+            ),
           ),
           child: FadeTransition(
             opacity: _fadeCtrl,
@@ -156,7 +166,13 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
                   const SizedBox(height: 48),
                   _buildCallerInfo(callState),
                   const Spacer(),
-                  if (callState.isCallAnswered) AnimatedSwitcher(duration: const Duration(milliseconds: 250), switchInCurve: Curves.easeOut, switchOutCurve: Curves.easeIn, child: _showDialpad ? _buildInCallDialpad() : _buildActionGrid(callState)),
+                  if (callState.isCallAnswered)
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: _showDialpad ? _buildInCallDialpad() : _buildActionGrid(callState),
+                    ),
                   const SizedBox(height: 36),
                   _buildEndCallButton(),
                   const SizedBox(height: 52),
@@ -173,33 +189,43 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
     final isRecording = callState.isRecording;
     return Column(
       children: [
-        // Avatar with gradient ring
+        // Avatar with gradient glowing ring
         ScaleTransition(
           scale: !callState.isCallAnswered ? _pulseAnim : const AlwaysStoppedAnimation(1.0),
           child: Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF4285F4).withValues(alpha: 0.4), const Color(0xFFAB47BC).withValues(alpha: 0.4)]),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF4285F4).withValues(alpha: 0.5),
+                  const Color(0xFFAB47BC).withValues(alpha: 0.5),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.18),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(2.5),
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF1A1A2E),
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF2D2D44), const Color(0xFF1A1A2E)]),
+                color: Color(0xFF07080D),
               ),
-              child: Center(
-                child: Text(
-                  _getInitials(widget.callerName),
-                  style: const TextStyle(color: Colors.white70, fontSize: 38, fontWeight: FontWeight.w300),
-                ),
+              child: ContactAvatar(
+                name: widget.callerName,
+                radius: 50,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 24),
 
         // Name
         Padding(
@@ -219,36 +245,24 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isRecording)
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 600),
-                builder: (_, v, _) => Opacity(
-                  opacity: v,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.red),
-                  ),
-                ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _RecordingIndicatorDot(),
               ),
             Text(
-              callState.isCallAnswered && callState.callStatus.isEmpty ? _formatTime() : callState.callStatus,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 15, fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: 1.0),
+              callState.isCallAnswered && callState.callStatus.isEmpty ? _formatTime() : callState.callStatus.toUpperCase(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.45),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                letterSpacing: 1.5,
+              ),
             ),
           ],
         ),
       ],
     );
-  }
-
-  String _getInitials(String name) {
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0][0].toUpperCase();
   }
 
   Widget _buildActionGrid(InCallState callState) {
@@ -287,26 +301,34 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 85,
+        width: 90,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isActive ? bgActive : Colors.white.withValues(alpha: 0.08),
-                boxShadow: isActive ? [BoxShadow(color: (activeColor ?? Colors.white).withValues(alpha: 0.2), blurRadius: 12, spreadRadius: 1)] : null,
+                color: isActive ? bgActive : Colors.white.withValues(alpha: 0.06),
+                border: Border.all(
+                  color: isActive ? bgActive.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+                boxShadow: isActive ? [BoxShadow(color: (activeColor ?? Colors.white).withValues(alpha: 0.25), blurRadius: 12, spreadRadius: 1)] : null,
               ),
-              child: Icon(icon, color: isActive ? fgActive : Colors.white, size: 24),
+              child: Icon(icon, color: isActive ? fgActive : Colors.white.withValues(alpha: 0.85), size: 26),
             ),
             const SizedBox(height: 10),
             Text(
               label,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: isActive ? 0.9 : 0.55),
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -322,9 +344,9 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
         Align(
           alignment: Alignment.centerLeft,
           child: Padding(
-            padding: const EdgeInsets.only(left: 12),
+            padding: const EdgeInsets.only(left: 16, bottom: 8),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white54),
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white70),
               onPressed: () => setState(() => _showDialpad = false),
             ),
           ),
@@ -345,35 +367,108 @@ class _InCallScreenState extends State<InCallScreen> with TickerProviderStateMix
   }
 
   Widget _dtmfRow(List<String> digits) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: digits
-          .map(
-            (d) => Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _onDtmf(d),
-                borderRadius: BorderRadius.circular(32),
-                splashColor: Colors.white10,
-                child: SizedBox(
-                  width: 68,
-                  height: 54,
-                  child: Center(
-                    child: Text(
-                      d,
-                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w300),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: digits
+            .map(
+              (d) => Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.06),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
+                ),
+                child: ClipOval(
+                  child: InkWell(
+                    onTap: () => _onDtmf(d),
+                    child: Center(
+                      child: Text(
+                        d,
+                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w400),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          )
-          .toList(),
+            )
+            .toList(),
+      ),
     );
   }
 
   Widget _buildEndCallButton() {
     final cs = Theme.of(context).colorScheme;
-    return FloatingActionButton.large(onPressed: _disconnect, elevation: 0, backgroundColor: cs.error, foregroundColor: cs.onError, child: const Icon(Icons.call_end_rounded, size: 36));
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: cs.error.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.large(
+        onPressed: _disconnect,
+        elevation: 0,
+        backgroundColor: cs.error,
+        foregroundColor: cs.onError,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.call_end_rounded, size: 36),
+      ),
+    );
+  }
+}
+
+class _RecordingIndicatorDot extends StatefulWidget {
+  @override
+  State<_RecordingIndicatorDot> createState() => _RecordingIndicatorDotState();
+}
+
+class _RecordingIndicatorDotState extends State<_RecordingIndicatorDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.red,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.redAccent,
+              blurRadius: 6,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

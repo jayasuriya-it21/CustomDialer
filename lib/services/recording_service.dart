@@ -66,7 +66,7 @@ class RecordingService {
       _currentContactName = contactName;
       _currentNumber = number;
 
-      await _recorder!.start(const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000), path: _currentPath!);
+      await _recorder!.start(const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 64000, sampleRate: 16000, numChannels: 1), path: _currentPath!);
 
       _isRecording = true;
       _recordStartTime = DateTime.now();

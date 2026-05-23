@@ -31,13 +31,10 @@ Future<void> _bootstrapApp() async {
   unawaited(_requestEssentialPermissions());
 
   // Optional delayed storage warm-up for later reads.
-  await Future<void>.delayed(const Duration(milliseconds: 300));
-  await AppStorage.instance.ensureReady();
+  AppStorage.instance.ensureReady();
 }
 
 Future<void> _requestEssentialPermissions() async {
-  await Future<void>.delayed(const Duration(milliseconds: 900));
-
   final permissions = <Permission>[Permission.phone, Permission.contacts, Permission.microphone];
 
   final toRequest = <Permission>[];

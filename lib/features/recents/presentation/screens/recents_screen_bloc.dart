@@ -13,14 +13,26 @@ import '../bloc/recents_bloc.dart';
 import '../bloc/recents_event.dart';
 import '../bloc/recents_state.dart';
 
-class RecentsScreenBloc extends StatefulWidget {
+class RecentsScreenBloc extends StatelessWidget {
   const RecentsScreenBloc({super.key});
 
   @override
-  State<RecentsScreenBloc> createState() => _RecentsScreenBlocState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<RecentsBloc>()..add(const RecentsRequested()),
+      child: const _RecentsView(),
+    );
+  }
 }
 
-class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+class _RecentsView extends StatefulWidget {
+  const _RecentsView();
+
+  @override
+  State<_RecentsView> createState() => _RecentsViewState();
+}
+
+class _RecentsViewState extends State<_RecentsView> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final TabController _tabController;
 
   @override
@@ -52,9 +64,7 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
   Widget build(BuildContext context) {
     super.build(context);
 
-    return BlocProvider(
-      create: (_) => getIt<RecentsBloc>()..add(const RecentsRequested()),
-      child: BlocConsumer<RecentsBloc, RecentsState>(
+    return BlocConsumer<RecentsBloc, RecentsState>(
         listenWhen: (previous, current) => previous.lastDeletedLog != current.lastDeletedLog && current.lastDeletedLog != null,
         listener: (context, state) {
           final log = state.lastDeletedLog;
@@ -85,6 +95,8 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
             return _buildLoadingPlaceholder(context);
           }
 
+          final groupedItems = state.groupedLogs;
+
           return Column(
             children: [
               TabBar(
@@ -107,8 +119,24 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     slivers: [
-                      if (state.favorites.isNotEmpty && state.filter == RecentsFilter.all) SliverToBoxAdapter(child: _buildFavoritesStrip(context, state.favorites)),
-                      if (state.visibleLogs.isEmpty) SliverFillRemaining(child: _buildEmptyState(context)) else SliverList(delegate: SliverChildBuilderDelegate((ctx, index) => _buildLogItem(context, state.visibleLogs[index]), childCount: state.visibleLogs.length)),
+                      if (state.favorites.isNotEmpty && state.filter == RecentsFilter.all)
+                        SliverToBoxAdapter(child: _buildFavoritesStrip(context, state.favorites)),
+                      if (groupedItems.isEmpty)
+                        SliverFillRemaining(child: _buildEmptyState(context))
+                      else
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (ctx, index) {
+                              final item = groupedItems[index];
+                              if (item is HeaderItem) {
+                                return _buildHeaderItem(context, item.title);
+                              } else {
+                                return _buildLogItem(context, (item as LogItem).log);
+                              }
+                            },
+                            childCount: groupedItems.length,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -116,6 +144,33 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
             ],
           );
         },
+      );
+  }
+
+
+  Widget _buildHeaderItem(BuildContext context, String title) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
+              color: cs.primary.withValues(alpha: 0.8),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Divider(
+              color: cs.outlineVariant.withValues(alpha: 0.15),
+              thickness: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -128,20 +183,21 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
           child: Text(
             'Favourites',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary, letterSpacing: 0.3),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: cs.primary, letterSpacing: 0.3),
           ),
         ),
         SizedBox(
-          height: 90,
+          height: 105,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             itemCount: favorites.length,
             itemBuilder: (_, i) {
               final contact = favorites[i];
+              final heroTag = 'recents_fav_${contact.name}_${contact.number}';
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: GestureDetector(
@@ -150,19 +206,52 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ContactDetailScreen(name: contact.name, number: contact.number),
+                        builder: (_) => ContactDetailScreen(
+                          name: contact.name,
+                          number: contact.number,
+                          heroTag: heroTag,
+                        ),
                       ),
                     );
                   },
                   child: SizedBox(
-                    width: 64,
+                    width: 70,
                     child: Column(
                       children: [
-                        ContactAvatar(name: contact.name, radius: 24),
-                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                cs.primary.withValues(alpha: 0.8),
+                                cs.tertiary.withValues(alpha: 0.8),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: cs.surface,
+                            ),
+                            child: ContactAvatar(
+                              name: contact.name,
+                              radius: 22,
+                              heroTag: heroTag,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Text(
                           contact.name.split(' ').first,
-                          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurfaceVariant,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -175,7 +264,10 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
             },
           ),
         ),
-        Divider(height: 1, indent: 16, endIndent: 16, color: cs.outlineVariant.withValues(alpha: 0.3)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.15)),
+        ),
       ],
     );
   }
@@ -239,38 +331,134 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
   Widget _buildLogItem(BuildContext context, CallLogEntity log) {
     final cs = Theme.of(context).colorScheme;
     final callService = getIt<CallService>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final heroTag = 'recent_${log.id}_${log.date}';
 
-    return InkWell(
-      onLongPress: () => _showContextMenu(context, log),
-      child: ListTile(
-        leading: ContactAvatar(name: log.displayName, radius: 22),
-        title: Text(
-          log.displayName,
-          style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: log.isMissed ? Colors.red : null),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        color: cs.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.08 : 0.15),
+            width: 1,
+          ),
         ),
-        subtitle: Row(
-          children: [
-            Icon(_typeIcon(log.type), size: 14, color: _typeColor(context, log.type)),
-            const SizedBox(width: 4),
-            Text(_typeLabel(log.type), style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-            if (log.duration > 0) ...[Text(' · ', style: TextStyle(color: cs.onSurfaceVariant)), Text(_formatDuration(log.duration), style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant))],
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_formatTime(log.date), style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-            const SizedBox(width: 4),
-            IconButton(
-              icon: Icon(Icons.call_rounded, size: 20, color: cs.primary),
-              visualDensity: VisualDensity.compact,
-              onPressed: () => callService.makeCall(log.number),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showCallDetails(context, log),
+          onLongPress: () => _showContextMenu(context, log),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Stack(
+                  children: [
+                    ContactAvatar(
+                      name: log.displayName,
+                      radius: 22,
+                      heroTag: heroTag,
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _typeColor(context, log.type),
+                          border: Border.all(color: cs.surfaceContainerLow, width: 1.5),
+                        ),
+                        child: Icon(
+                          _typeIcon(log.type),
+                          size: 9,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        log.displayName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.5,
+                          color: log.isMissed ? cs.error : cs.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Text(
+                            _typeLabel(log.type),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          if (log.duration > 0) ...[
+                            Text(
+                              ' · ',
+                              style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
+                            ),
+                            Text(
+                              _formatDuration(log.duration),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTime(log.date),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: () => callService.makeCall(log.number),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: cs.primary.withValues(alpha: 0.08),
+                        ),
+                        child: Icon(
+                          Icons.call_rounded,
+                          size: 16,
+                          color: cs.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        onTap: () => _showCallDetails(context, log),
       ),
     );
   }
@@ -339,6 +527,7 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
     final contactService = getIt<ContactService>();
     final dateObj = DateTime.fromMillisecondsSinceEpoch(log.date);
     final exactTime = DateFormat('EEEE, MMM d · h:mm a').format(dateObj);
+    final heroTag = 'recent_${log.id}_${log.date}';
 
     showModalBottomSheet(
       context: context,
@@ -357,7 +546,7 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
             const SizedBox(height: 20),
             Row(
               children: [
-                ContactAvatar(name: log.displayName, radius: 28),
+                ContactAvatar(name: log.displayName, radius: 28, heroTag: heroTag),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -398,7 +587,11 @@ class _RecentsScreenBlocState extends State<RecentsScreenBloc> with SingleTicker
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ContactDetailScreen(name: log.displayName, number: log.number),
+                      builder: (_) => ContactDetailScreen(
+                        name: log.displayName,
+                        number: log.number,
+                        heroTag: heroTag,
+                      ),
                     ),
                   );
                 }),

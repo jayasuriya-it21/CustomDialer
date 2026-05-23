@@ -63,53 +63,94 @@ class _FavouritesView extends StatelessWidget {
           child: GridView.builder(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.85),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.76,
+            ),
             itemCount: favorites.length,
             itemBuilder: (_, i) {
               final contact = favorites[i];
               final heroTag = 'fav_${contact.name}_${contact.number}';
 
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ContactDetailScreen(name: contact.name, number: contact.number, heroTag: heroTag),
-                    ),
-                  );
-                },
-                child: Column(
-                  children: [
-                    Stack(
+              return Card(
+                elevation: 0,
+                color: cs.surfaceContainerLow,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.15), width: 1),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ContactDetailScreen(name: contact.name, number: contact.number, heroTag: heroTag),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ContactAvatar(name: contact.name, radius: 32, heroTag: heroTag),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
+                        Stack(
+                          children: [
+                            ContactAvatar(name: contact.name, radius: 26, heroTag: heroTag),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: cs.surfaceContainerLow,
+                                  border: Border.all(color: cs.surface, width: 1),
+                                ),
+                                child: const Icon(Icons.star_rounded, size: 10, color: Colors.amber),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          contact.name,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurface),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => callService.makeCall(contact.number),
                           child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(shape: BoxShape.circle, color: cs.surface),
-                            child: const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: cs.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.call_rounded, size: 11, color: cs.primary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Call',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      contact.name,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                    GestureDetector(
-                      onTap: () => callService.makeCall(contact.number),
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Icon(Icons.call_rounded, size: 18, color: cs.primary),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },
