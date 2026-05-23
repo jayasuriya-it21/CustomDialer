@@ -4,8 +4,11 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.RingtoneManager
@@ -15,9 +18,11 @@ import android.provider.ContactsContract
 import androidx.core.app.NotificationCompat
 
 object CallNotificationManager {
-    private const val CHANNEL_ID = "dialer_call_channel_v2"
-    private const val CHANNEL_NAME = "Phone Calls"
-    private const val NOTIFICATION_ID = 8888
+    private const val CHANNEL_ID = "calls"
+    private const val CHANNEL_NAME = "Calls"
+    private const val NOTIFICATION_ID = 999
+    private const val INCOMING_CALL_NOTIFICATION_ID = 9001
+    private const val ONGOING_CALL_NOTIFICATION_ID = 9002
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -28,12 +33,12 @@ object CallNotificationManager {
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_HIGH
                 ).apply {
-                    description = "Incoming and active call notifications"
+                    description = "Incoming and active call alerts"
                     enableLights(true)
                     lightColor = Color.GREEN
                     enableVibration(true)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    
+
                     val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
                     val audioAttributes = AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -62,9 +67,30 @@ object CallNotificationManager {
         return name
     }
 
+    private fun getContactPhoto(context: Context, number: String): Bitmap? {
+        try {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+            val projection = arrayOf(ContactsContract.PhoneLookup._ID)
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val contactId = cursor.getLong(0)
+                    val contactUri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactId)
+                    val photoStream = ContactsContract.Contacts.openContactPhotoInputStream(context.contentResolver, contactUri)
+                    if (photoStream != null) {
+                        return BitmapFactory.decodeStream(photoStream)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+        return null
+    }
+
     fun showIncomingCallNotification(context: Context, number: String) {
         createNotificationChannel(context)
         val name = getContactName(context, number)
+        val avatar = getContactPhoto(context, number)
 
         // Intent to open app
         val contentIntent = Intent(context, MainActivity::class.java).apply {
@@ -72,7 +98,7 @@ object CallNotificationManager {
         }
         val contentPendingIntent = PendingIntent.getActivity(
             context,
-            100,
+            1001,
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -83,7 +109,7 @@ object CallNotificationManager {
         }
         val answerPendingIntent = PendingIntent.getBroadcast(
             context,
-            101,
+            2001,
             answerIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -94,7 +120,7 @@ object CallNotificationManager {
         }
         val declinePendingIntent = PendingIntent.getBroadcast(
             context,
-            102,
+            2002,
             declineIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -102,44 +128,50 @@ object CallNotificationManager {
         // Build notification
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle("Incoming call")
-            .setContentText(name)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentTitle(name)
+            .setContentText("Incoming call • $number")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
             .setContentIntent(contentPendingIntent)
             .setFullScreenIntent(contentPendingIntent, true) // Show HUN banner when screen on, wake when screen off
-            .addAction(android.R.drawable.ic_menu_call, "Answer", answerPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Decline", declinePendingIntent)
+            .addAction(android.R.drawable.ic_menu_call, "Answer", answerPendingIntent)
+
+        if (avatar != null) {
+            builder.setLargeIcon(avatar)
+        }
 
         val service = CustomInCallService.instance
         if (service != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 service.startForeground(
-                    NOTIFICATION_ID,
+                    INCOMING_CALL_NOTIFICATION_ID,
                     builder.build(),
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
                 )
             } else {
-                service.startForeground(NOTIFICATION_ID, builder.build())
+                service.startForeground(INCOMING_CALL_NOTIFICATION_ID, builder.build())
             }
         } else {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(NOTIFICATION_ID, builder.build())
+            nm.notify(INCOMING_CALL_NOTIFICATION_ID, builder.build())
         }
     }
 
     fun showOngoingCallNotification(context: Context, number: String) {
         createNotificationChannel(context)
         val name = getContactName(context, number)
+        val avatar = getContactPhoto(context, number)
 
         val contentIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val contentPendingIntent = PendingIntent.getActivity(
             context,
-            200,
+            2003,
             contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -149,36 +181,41 @@ object CallNotificationManager {
         }
         val hangupPendingIntent = PendingIntent.getBroadcast(
             context,
-            201,
+            2004,
             hangupIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_outgoing)
-            .setContentTitle("Ongoing call")
-            .setContentText(name)
+            .setContentTitle(name)
+            .setContentText("Ongoing call • $number")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
             .setContentIntent(contentPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Hang Up", hangupPendingIntent)
 
+        if (avatar != null) {
+            builder.setLargeIcon(avatar)
+        }
+
         val service = CustomInCallService.instance
         if (service != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 service.startForeground(
-                    NOTIFICATION_ID,
+                    ONGOING_CALL_NOTIFICATION_ID,
                     builder.build(),
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
                 )
             } else {
-                service.startForeground(NOTIFICATION_ID, builder.build())
+                service.startForeground(ONGOING_CALL_NOTIFICATION_ID, builder.build())
             }
         } else {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.notify(NOTIFICATION_ID, builder.build())
+            nm.notify(ONGOING_CALL_NOTIFICATION_ID, builder.build())
         }
     }
 
@@ -188,7 +225,8 @@ object CallNotificationManager {
             service.stopForeground(true)
         } else {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.cancel(NOTIFICATION_ID)
+            nm.cancel(INCOMING_CALL_NOTIFICATION_ID)
+            nm.cancel(ONGOING_CALL_NOTIFICATION_ID)
         }
     }
 }
